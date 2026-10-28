@@ -1,6 +1,11 @@
 # AI Usage Widget · AI 用量小组件
 
-[English](README.en.md) | 中文
+[![最新版本](https://img.shields.io/github/v/release/Atetra2007/ai-usage-widget?label=release)](https://github.com/Atetra2007/ai-usage-widget/releases/latest)
+[![下载量](https://img.shields.io/github/downloads/Atetra2007/ai-usage-widget/total?label=downloads)](https://github.com/Atetra2007/ai-usage-widget/releases)
+![Windows 10 / 11](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6)
+[![MIT](https://img.shields.io/github/license/Atetra2007/ai-usage-widget)](LICENSE)
+
+[English](README.en.md) | 中文 · [下载最新版](https://github.com/Atetra2007/ai-usage-widget/releases/latest) · [更新日志](CHANGELOG.md)
 
 Windows 桌面上的一条透明小胶囊，实时显示 **Claude**、**Codex** 的剩余额度，以及**本地大模型**（Bionic / LM Studio）的生成速度和 token 用量。鼠标移上去展开详情，额度快用完时提醒你换个工具。
 
@@ -35,7 +40,7 @@ Windows 桌面上的一条透明小胶囊，实时显示 **Claude**、**Codex** 
 |---|---|
 | Claude 额度 | 安装 [Claude Code](https://docs.claude.com/en/docs/claude-code/setup)，用订阅账号（Pro / Max）登录一次。小组件读取它的登录凭证查询额度，之后不用 Claude Code 也行。 |
 | Claude 今日 token | 只统计 Claude Code 的用量（网页版 / 桌面版聊天的 token 本地没有记录；额度百分比不受影响，是所有入口共用的）。 |
-| Codex | 安装并登录 Codex（CLI 或 App），用过一次就会有会话记录。 |
+| Codex | 安装并登录 Codex（CLI 或 App），用过一次就会有会话记录。只有每周额度的套餐会显示为「每周额度」。 |
 | 本地模型 | 用 [LM Studio Bionic](https://lmstudio.ai) 或 LM Studio 跑 GGUF 模型。其他 llama.cpp 服务器可在 `settings.json` 的 `local_log_dirs` 里加日志目录。 |
 | 显存 | NVIDIA 显卡（通过 `nvidia-smi`）。 |
 
@@ -46,6 +51,14 @@ Windows 桌面上的一条透明小胶囊，实时显示 **Claude**、**Codex** 
 - 拖动胶囊移动位置，松手自动吸附（离边距离在设置里调，吸附距离在 `settings.json` 的 `snap_distance`）。
 - 放在屏幕下半边时向上展开，右半边时固定右边缘。
 - 「设置」里可以勾选显示内容、换样式、开机自启、换语言。
+
+## 常见问题
+
+- **Claude 显示「额度接口 HTTP 401」或「令牌已过期」**：在终端运行一次 `claude` 重新登录即可；设置里打开「Claude 令牌过期时自动刷新」可以少遇到。
+- **本地模型速度后面写着「估算」**：读不到 llama.cpp 的 `/slots` 接口（Bionic 内置服务器需要密钥），生成中先显示最近几次的平均速度，每条回复结束后更新为真实速度。
+- **小组件不见了**：全屏玩游戏 / 看视频时会自动隐藏，退出全屏就回来。如果一直不出现，可能是程序退出了：重新打开它；反馈问题时请附上数据目录里的 `error.log`。
+- **杀毒软件或 SmartScreen 拦截**：exe 没有代码签名。可以用 Release 页面上的 SHA256 核对下载的文件，或者从源码运行。
+- **端口 8765 被占用**：在 `settings.json` 里改 `http_port`，或把 `http_enabled` 设为 `false`。
 
 ## 隐私与说明
 
@@ -72,7 +85,7 @@ debug_widget.bat   :: 带控制台和开发者工具启动
 build_exe.bat      :: 用 PyInstaller 打包到 dist\AIUsageWidget\
 ```
 
-推送 `v*` 标签时，GitHub Actions 会自动打包并发布到 Releases（见 `.github/workflows/release.yml`）。
+发布新版本：改 `app/main.py` 里的 `VERSION`，在 `CHANGELOG.md` 顶部写好这个版本的更新内容，然后双击 `publish.bat`。它会提交、推送并打上 `v*` 标签，GitHub Actions 随后自动打包，用 CHANGELOG 里对应的段落作为 Release 说明（见 `.github/workflows/release.yml`）。
 
 代码结构：
 

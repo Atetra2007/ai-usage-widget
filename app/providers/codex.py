@@ -86,15 +86,27 @@ class CodexCollector:
                 merged[day]["fresh"] += vals["fresh"]
             if v.get("rl") and (latest is None or v["rl"][0] > latest[0]):
                 latest = v["rl"]
+        self.cache.prune("codex:", {"codex:" + fp for fp in files})
         self.history.merge("codex", merged)
         td, tt = self.history.totals("codex")
         st = {"ok": bool(files), "today": td, "total": tt, "five_hour": None, "weekly": None,
               "updated": latest[0] if latest else None, "week": self.history.last_days("codex")}
         if latest:
-            r = latest[1]
-            for key, name in (("primary", "five_hour"), ("secondary", "weekly")):
+            ts, r = latest
+            for key in ("primary", "secondary"):
                 w = r.get(key)
-                if w:
-                    st[name] = window_info(w.get("used_percent"), w.get("resets_at"), w.get("window_minutes"))
+                if not isinstance(w, dict) or w.get("used_percent") is None:
+                    continue
+                mins = w.get("window_minutes")
+                # 按窗口长度归类：只有每周额度的套餐里，primary 就是 7 天窗口
+                if mins:
+                    name = "weekly" if mins >= 1440 else "five_hour"
+                else:
+                    name = "five_hour" if key == "primary" else "weekly"
+                resets = parse_iso(w.get("resets_at"))
+                if resets is None and w.get("resets_in_seconds") is not None:  # 旧版 Codex 的格式
+                    resets = ts + float(w["resets_in_seconds"])
+                if st[name] is None:
+                    st[name] = window_info(w.get("used_percent"), resets, mins or (300 if name == "five_hour" else 10080))
         self.state = st
         return st

@@ -149,7 +149,7 @@ zh:{setup_hint:'点这里设置',empty:'还没有选择要显示的内容。',op
  d_local_ok:'已检测到：{0}',d_local_missing:'未检测到 Bionic / LM Studio 日志',d_gpu_ok:'已检测到 NVIDIA 显卡',d_gpu_missing:'未检测到 nvidia-smi（仅支持 N 卡）',
  how_install:'安装说明',new_badge:'新',data_dir:'数据目录',
  tip_popup:'弹窗模式：悬停展开（点一下切到胶囊模式）',tip_pill:'胶囊模式：只显示胶囊，方便拖动（点一下切到弹窗模式）',tip_today:'本地模型今日 token',
- reset_in:'{0} 后重置',window_reset:'窗口已重置',weekly:'本周 {0}%',today_total:'今日 {0} · 累计 {1}',today_short:'今日 {0}',loading:'读取中',no_data:'暂无数据',
+ reset_in:'{0} 后重置',window_reset:'窗口已重置',weekly:'本周 {0}%',week_only:'每周额度',today_total:'今日 {0} · 累计 {1}',today_short:'今日 {0}',loading:'读取中',no_data:'暂无数据',
  e_not_logged_in:'未登录 Claude Code',e_token_expired:'令牌已过期 · 运行一次 claude 刷新',e_refresh_failed:'令牌刷新失败 · 运行一次 claude 重新登录',e_network:'网络错误，稍后重试',e_http:'额度接口 HTTP {0}',
  generating:'生成中',estimated:'生成中 · 估算',idle:'空闲',not_loaded:'未加载',no_logs:'没找到本地模型日志',vram:'显存 {0}/{1}G',
  a_out_local:'{0} 快用完了，简单任务交给本地',a_out_other:'{0} 快用完了，{1} 还剩 {2}%',a_out:'{0} 5 小时额度快用完了',a_fast:'{0} 偏快，预计 {1} 用完',a_week:'{0} 本周额度已用 {1}%',a_vram:'显存快满了，可能溢出变慢',
@@ -163,7 +163,7 @@ en:{setup_hint:'Click to set up',empty:'Nothing selected to show yet.',open_sett
  d_local_ok:'Found: {0}',d_local_missing:'No Bionic / LM Studio logs found',d_gpu_ok:'NVIDIA GPU found',d_gpu_missing:'nvidia-smi not found (NVIDIA only)',
  how_install:'How to install',new_badge:'new',data_dir:'Data folder',
  tip_popup:'Popup mode: expands on hover (click for pill mode)',tip_pill:'Pill mode: stays compact for easy dragging (click for popup mode)',tip_today:'Local model tokens today',
- reset_in:'resets in {0}',window_reset:'window reset',weekly:'week {0}%',today_total:'today {0} · total {1}',today_short:'today {0}',loading:'loading',no_data:'no data',
+ reset_in:'resets in {0}',window_reset:'window reset',weekly:'week {0}%',week_only:'weekly limit',today_total:'today {0} · total {1}',today_short:'today {0}',loading:'loading',no_data:'no data',
  e_not_logged_in:'Claude Code not logged in',e_token_expired:'token expired · run claude once',e_refresh_failed:'token refresh failed · run claude to log in',e_network:'network error, retrying',e_http:'usage API HTTP {0}',
  generating:'generating',estimated:'generating · est.',idle:'idle',not_loaded:'not loaded',no_logs:'no local model logs found',vram:'VRAM {0}/{1}G',
  a_out_local:'{0} is almost out — use the local model for simple tasks',a_out_other:'{0} is almost out — {1} has {2}% left',a_out:'{0} 5-hour limit almost used up',a_fast:'{0} is burning fast — out by {1}',a_week:'{0} weekly usage at {1}%',a_vram:'VRAM almost full — may slow down',
@@ -183,15 +183,16 @@ const NAMES={claude:'Claude',codex:'Codex'};
 async function api(name,...a){try{if(window.pywebview&&pywebview.api&&pywebview.api[name])return await pywebview.api[name](...a)}catch(e){}return null}
 function level(w,st){if(!w)return'';if(w.used>=st.danger)return'bad';if(w.used>=st.warn||(w.ahead&&w.eta))return'warn';return''}
 function quota(p,key,st){
-  const d=st[key],w=d&&d.five_hour,wk=d&&d.weekly;
+  const d=st[key];let w=d&&d.five_hour,wk=d&&d.weekly;
+  const wkOnly=!w&&!!wk;if(wkOnly){w=wk;wk=null}  // 只有每周额度的套餐：主进度条显示每周
   const V=$(p+'V'),B=$(p+'B'),P=$(p+'P');let lv='';
   if(w){lv=level(w,st);V.innerHTML=Math.round(w.used)+'<small>%</small>';B.style.width=w.used+'%';B.className=lv;
     if(w.pace!=null){P.classList.remove('hide');P.style.left='calc('+w.pace+'% - 1px)'}else P.classList.add('hide');
-    $(p+'M1').textContent=(w.reset_passed?t('window_reset'):t('reset_in',until(w.resets_at)))+(wk?' · '+t('weekly',Math.round(wk.used)):'')}
+    $(p+'M1').textContent=(wkOnly?t('week_only')+' · ':'')+(w.reset_passed?t('window_reset'):t('reset_in',until(w.resets_at)))+(wk?' · '+t('weekly',Math.round(wk.used)):'')}
   else{V.textContent='—';B.style.width='0';P.classList.add('hide');
     $(p+'M1').textContent=d&&d.error?errText(d.error):(d&&key==='codex'&&d.ok===false?t('no_data'):t('loading'))}
   $(p+'M2').textContent=d?t('today_total',fmt(d.today),fmt(d.total)):'';
-  return {w,wk,lv,txt:w?Math.round(w.used)+'%':'—'};
+  return {w,wk,wkOnly,lv,txt:w?Math.round(w.used)+'%':'—'};
 }
 function spark(arr){
   if(!arr||arr.length<2){$('lS').setAttribute('points','');$('lA').setAttribute('points','');return}
@@ -217,7 +218,7 @@ function render(st){
   for(const k of ['claude','codex']){const q=Q[k];if(!q||!q.w)continue;const w=q.w,nm=NAMES[k],other=k==='claude'?'codex':'claude',o=Q[other];
     if(w.used>=st.danger){if(en.local)alerts.push(['bad',t('a_out_local',nm)]);
       else if(o&&o.w&&o.w.used<st.warn)alerts.push(['bad',t('a_out_other',nm,NAMES[other],Math.round(100-o.w.used))]);
-      else alerts.push(['bad',t('a_out',nm)])}
+      else alerts.push(['bad',q.wkOnly?t('a_week',nm,Math.round(w.used)):t('a_out',nm)])}
     else if(w.eta)alerts.push(['warn',t('a_fast',nm,hm(w.eta))]);
     if(q.wk&&q.wk.used>=st.danger)alerts.push(['bad',t('a_week',nm,Math.round(q.wk.used))]);}
   if(en.local){const L=st.local||{};const gen=!!L.generating,sp=gen?(L.speed||0):0;

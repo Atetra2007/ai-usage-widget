@@ -229,6 +229,7 @@ class ClaudeCollector:
                     continue
                 self.cache.put("claude:" + fp, st, v)
             seen.update(v)
+        self.cache.prune("claude:", {"claude:" + fp for fp in files})
         daily = defaultdict(lambda: {"total": 0, "fresh": 0})
         for day, tot, fresh in seen.values():
             daily[day]["total"] += tot

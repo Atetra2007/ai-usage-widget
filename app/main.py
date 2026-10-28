@@ -23,7 +23,7 @@ from providers import gpu as P_gpu  # noqa: E402
 from providers import local as P_local  # noqa: E402
 from providers.common import FileCache, History  # noqa: E402
 
-VERSION = "1.0.2"
+VERSION = "1.0.3"
 TITLE = "AI Usage Widget"
 IS_WIN = sys.platform == "win32"
 DATA = paths.data_dir()
@@ -586,7 +586,7 @@ def restart_self(api, why):
         os._exit(0)
 
 
-def hook_process_failed(api):
+def hook_process_failed(api, last=True):
     """订阅 WebView2 的 ProcessFailed：GPU 进程崩溃时 JS 还活着、窗口却画不出东西（透明窗口=直接消失），
     普通的心跳检测发现不了，所以直接听这个事件，任何子进程挂掉都自动重启。"""
     try:
@@ -611,8 +611,11 @@ def hook_process_failed(api):
         form.Invoke(Action(attach))
         log_debug("webview crash hook attached")
         return True
-    except Exception:
-        log_error("hook_process_failed")
+    except Exception as e:
+        if last:
+            log_error("hook_process_failed")
+        else:  # 启动时 WebView2 常常还没就绪，稍后会重试，不算错误
+            log_debug(f"crash hook not ready yet: {e}")
         return False
 
 
@@ -620,8 +623,8 @@ def health_check(api):
     """WebView2 偶尔会崩（窗口变空白/消失），检测到就自动重启自己。"""
     fails = 0
     time.sleep(10)
-    for _ in range(5):
-        if IS_WIN and hook_process_failed(api):
+    for i in range(5):
+        if IS_WIN and hook_process_failed(api, last=(i == 4)):
             break
         time.sleep(3)
     while not ENGINE.stop.is_set():
@@ -720,19 +723,22 @@ def main():
     W0, H0 = 240, 34
     x, y = ui.get("x"), ui.get("y")
     try:
-        sc = webview.screens[0]
-        sw, sh = sc.width, sc.height
+        screens = [(s.x, s.y, s.x + s.width, s.y + s.height) for s in webview.screens]
     except Exception:
-        sw, sh = 1920, 1080
+        screens = []
+    primary = screens[0] if screens else (0, 0, 1920, 1080)
     if x is None:
-        x, y = sw - W0 - 24, 24
+        x, y = primary[2] - W0 - 24, primary[1] + 24
     else:
         w, h = ui.get("w", W0), ui.get("h", H0)
-        if x + w / 2 > sw / 2:
+        cx, cy = x + w / 2, y + h / 2
+        # 按窗口中心所在的那块屏幕还原（多显示器时不再被拉回主屏）
+        L, T, R, B = next((s for s in screens if s[0] <= cx < s[2] and s[1] <= cy < s[3]), primary)
+        if cx > (L + R) / 2:
             x = x + w - W0
-        if y + h / 2 > sh / 2:
+        if cy > (T + B) / 2:
             y = y + h - H0
-        x, y = max(0, min(x, sw - W0)), max(0, min(y, sh - H0))
+        x, y = max(L, min(x, R - W0)), max(T, min(y, B - H0))
     dv = debug_variant()
     if dv is not None:
         log_debug(f"debug variant {dv}")

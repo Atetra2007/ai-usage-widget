@@ -66,31 +66,43 @@ def window_info(used, resets_at, window_minutes):
 
 
 class FileCache:
-    """按文件 size/mtime 缓存解析结果，避免反复全量读取。"""
+    """按文件 size/mtime 缓存解析结果，避免反复全量读取。多个采集线程共用，所以加锁。"""
 
     def __init__(self, path):
         self.path = path
+        self.lock = threading.Lock()
         self.data = {}
         try:
             with open(path, "r", encoding="utf-8") as f:
                 self.data = json.load(f)
+            if not isinstance(self.data, dict):
+                self.data = {}
         except Exception:
             self.data = {}
 
     def get(self, key, st):
-        e = self.data.get(key)
+        with self.lock:
+            e = self.data.get(key)
         if e and e.get("size") == st.st_size and e.get("mtime") == int(st.st_mtime):
             return e.get("v")
         return None
 
     def put(self, key, st, v):
-        self.data[key] = {"size": st.st_size, "mtime": int(st.st_mtime), "v": v}
+        with self.lock:
+            self.data[key] = {"size": st.st_size, "mtime": int(st.st_mtime), "v": v}
+
+    def prune(self, prefix, keep):
+        """删掉已经不存在的日志文件的缓存，避免 cache.json 越来越大（每日用量另存在 history.json，不受影响）。"""
+        with self.lock:
+            for k in [k for k in self.data if k.startswith(prefix) and k not in keep]:
+                del self.data[k]
 
     def save(self):
-        tmp = self.path + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(self.data, f)
-        os.replace(tmp, self.path)
+        with self.lock:
+            tmp = self.path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(self.data, f)
+            os.replace(tmp, self.path)
 
 
 class History:

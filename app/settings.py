@@ -49,14 +49,20 @@ class Settings:
         self.lock = threading.Lock()
         self.first_run = False
         self.data = dict(DEFAULTS)
+        loaded = False
         if os.path.exists(self.path):
             try:
                 with open(self.path, "r", encoding="utf-8") as f:
                     self.data.update(json.load(f))
-            except Exception:
-                pass
-        else:
-            migrated = self._migrate(data_dir)
+                loaded = True
+            except Exception:  # 文件损坏：留一份 .bad 备份，按第一次运行重新生成
+                self.data = dict(DEFAULTS)
+                try:
+                    os.replace(self.path, self.path + ".bad")
+                except OSError:
+                    pass
+        if not loaded or not isinstance(self.data.get("sources"), dict):
+            migrated = self._migrate(data_dir) if not loaded else False
             det = detect_all(self.data)
             self.data["sources"] = {k: det[k]["status"] == "ok" for k in SOURCES}
             self.data["seen"] = [k for k in SOURCES if det[k]["status"] == "ok"]

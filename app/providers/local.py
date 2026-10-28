@@ -154,6 +154,7 @@ class LocalCollector:
             for day, vals in v.items():
                 for k in ("total", "output", "count"):
                     merged[day][k] += vals.get(k, 0)
+        self.cache.prune("local:", {"local:" + fp for fp in files})
         self.history.merge("local", merged)
         if files and files[-1] != self.cur_file:
             self.cur_file = files[-1]

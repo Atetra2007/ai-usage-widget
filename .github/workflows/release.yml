@@ -38,9 +38,37 @@ jobs:
           name: AIUsageWidget-win-x64
           path: ${{ env.ZIP }}
 
+      # 从 CHANGELOG.md 取出这个版本的说明，附上 zip 的 SHA256，作为 Release 正文
+      - name: Release notes
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: python
+        run: |
+          import hashlib, os, re
+          ver = os.environ["GITHUB_REF_NAME"].lstrip("v")
+          zip_name = os.environ["ZIP"]
+          notes, on = [], False
+          with open("CHANGELOG.md", encoding="utf-8") as f:
+              for line in f:
+                  if line.startswith("## "):
+                      if on:
+                          break
+                      on = re.match(r"## \[?v?" + re.escape(ver) + r"\]?(\s|$)", line) is not None
+                      continue
+                  if on:
+                      notes.append(line.rstrip("\n"))
+          with open(zip_name, "rb") as f:
+              sha = hashlib.sha256(f.read()).hexdigest()
+          body = "\n".join(notes).strip()
+          body += f"\n\n---\n\n**下载 / Download**: `{zip_name}`  \nSHA256: `{sha}`\n"
+          with open("release_notes.md", "w", encoding="utf-8") as f:
+              f.write(body)
+          print("notes lines:", len(notes), "sha256:", sha)
+
       - name: Publish release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
+          name: AI Usage Widget ${{ github.ref_name }}
+          body_path: release_notes.md
           files: ${{ env.ZIP }}
           generate_release_notes: true

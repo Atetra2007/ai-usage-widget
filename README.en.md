@@ -1,6 +1,11 @@
 # AI Usage Widget
 
-English | [中文](README.md)
+[![Latest release](https://img.shields.io/github/v/release/Atetra2007/ai-usage-widget?label=release)](https://github.com/Atetra2007/ai-usage-widget/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Atetra2007/ai-usage-widget/total?label=downloads)](https://github.com/Atetra2007/ai-usage-widget/releases)
+![Windows 10 / 11](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6)
+[![MIT](https://img.shields.io/github/license/Atetra2007/ai-usage-widget)](LICENSE)
+
+English | [中文](README.md) · [Download the latest version](https://github.com/Atetra2007/ai-usage-widget/releases/latest) · [Changelog](CHANGELOG.md)
 
 A tiny transparent pill on your Windows desktop that shows your **Claude** and **Codex** usage limits, plus the generation speed and token usage of your **local LLM** (Bionic / LM Studio). Hover to expand; it warns you before you run out and suggests where to go next.
 
@@ -35,9 +40,17 @@ Requirements: Windows 11 (Windows 10 works but transparency may look different) 
 |---|---|
 | Claude limits | Install [Claude Code](https://docs.claude.com/en/docs/claude-code/setup) and log in once with your Pro / Max subscription. The widget reads its login to query usage; you don't need to keep using Claude Code. |
 | Claude tokens today | Counts Claude Code usage only (claude.ai / desktop chats aren't logged locally; the limit percentage is shared across all of them). |
-| Codex | Install and sign in to Codex (CLI or app); sessions appear after first use. |
+| Codex | Install and sign in to Codex (CLI or app); sessions appear after first use. Weekly-only plans are shown as a weekly limit. |
 | Local model | Run a GGUF model with [LM Studio Bionic](https://lmstudio.ai) or LM Studio. Other llama.cpp servers: add their log folder to `local_log_dirs` in `settings.json`. |
 | VRAM | NVIDIA GPU (via `nvidia-smi`). |
+
+## FAQ
+
+- **Claude shows "usage API HTTP 401" or "token expired"**: run `claude` once in a terminal to log in again. Turning on "Auto-refresh expired Claude token" in settings makes this rarer.
+- **The local speed says "est."**: llama.cpp's `/slots` endpoint isn't reachable (Bionic's built-in server needs a key), so while generating the widget shows the average of recent replies and switches to the real speed when each reply finishes.
+- **The widget disappeared**: it hides over fullscreen games and videos and comes back when you leave fullscreen. If it never comes back, it may have quit: start it again, and attach `error.log` from the data folder if you report the problem.
+- **Antivirus or SmartScreen blocks it**: the exe isn't code-signed. Check the download against the SHA256 on the release page, or run from source.
+- **Port 8765 is already in use**: change `http_port` in `settings.json`, or set `http_enabled` to `false`.
 
 ## Privacy & notes
 
@@ -64,7 +77,7 @@ debug_widget.bat   :: run with console and devtools
 build_exe.bat      :: build with PyInstaller into dist\AIUsageWidget\
 ```
 
-Pushing a `v*` tag makes GitHub Actions build and publish a release (`.github/workflows/release.yml`).
+To release: bump `VERSION` in `app/main.py`, add a section for it at the top of `CHANGELOG.md`, then run `publish.bat`. It commits, pushes and tags `v*`; GitHub Actions then builds the zip and uses that CHANGELOG section as the release notes (`.github/workflows/release.yml`).
 
 To add a data source, write a module in `app/providers/` with a `detect()` function and a collector class, then register it in `settings.py` and the UI.
 

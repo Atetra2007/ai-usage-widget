@@ -1,0 +1,39 @@
+name: 问题反馈 / Bug report
+description: 显示不对、崩溃或无法启动 / Something looks wrong, crashes or won't start
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: 版本 / Version
+      description: 设置页底部「数据目录 · vX.Y.Z」/ Shown at the bottom of Settings
+      placeholder: v1.0.3
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows 版本 / Windows version
+      placeholder: Windows 11 24H2
+  - type: checkboxes
+    id: sources
+    attributes:
+      label: 用到的数据来源 / Data sources in use
+      options:
+        - label: Claude
+        - label: Codex
+        - label: 本地模型 / Local model (Bionic / LM Studio)
+        - label: NVIDIA 显存 / VRAM
+  - type: textarea
+    id: what
+    attributes:
+      label: 发生了什么 / What happened
+      description: 期望看到什么、实际看到什么，最好附截图 / Expected vs. actual; screenshots help
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志 / Logs
+      description: 设置 → 点「数据目录」，贴上 error.log 和 debug.log 的最后几十行（先删掉个人信息）/ Settings → click the data folder link, then paste the last lines of error.log and debug.log (remove anything personal)
+      render: text
