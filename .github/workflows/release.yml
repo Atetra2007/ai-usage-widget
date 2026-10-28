@@ -1,0 +1,46 @@
+name: Build & Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Build exe
+        run: pyinstaller packaging/AIUsageWidget.spec --noconfirm --distpath dist --workpath build
+
+      - name: Zip
+        shell: pwsh
+        run: |
+          $name = "AIUsageWidget-${{ github.ref_name }}-win-x64.zip"
+          Compress-Archive -Path dist/AIUsageWidget/* -DestinationPath $name
+          echo "ZIP=$name" >> $env:GITHUB_ENV
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AIUsageWidget-win-x64
+          path: ${{ env.ZIP }}
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ZIP }}
+          generate_release_notes: true
