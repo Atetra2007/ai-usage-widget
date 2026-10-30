@@ -5,6 +5,8 @@ Each section below becomes the notes of the matching GitHub release.
 
 ## 未发布 · Unreleased
 
+- Codex 手动切号（默认关闭，设置里打开）：保存几个登录身份，点一下就切换，不用退出再登录；对话、项目和设置都共用。身份自动用空间名命名，列表里同时显示 5 小时额度和周额度。保存的登录信息用 Windows DPAPI 加密。只在你点按钮时切换，不会按额度自动换号。目前只支持微软商店版 Codex。
+- Manual Codex account switching (off by default, enable it in settings): save a few logins and switch with one click instead of logging out and back in; conversations, projects and settings stay shared. Identities are named after their workspace, and the list shows both 5-hour and weekly usage. Saved logins are encrypted with Windows DPAPI. It only switches when you click, never automatically based on usage. Microsoft Store version of Codex only for now.
 - Codex 支持多个账号：以前切换账号后，小组件只取日志里最新的一条额度，两个号的数据会互相覆盖、来回跳。现在读 `auth.json` 认出当前登录的号，用额度窗口的重置时间区分各个号的记录（切号前开的会话还在跑也不会算错），每个号分开显示，当前号快用完时提示切到还有余量的号。
 - Codex 额度改为实时查询（和 Codex `/status` 同一个接口，只读，不刷新令牌）：切号后马上显示新号的额度，不用等它发一次请求。会自动找 Cockpit Tools、cc-switch、codex-switch 等切换工具保存的其他账号一起查询；也可以在 `settings.json` 的 `codex_auth_files` 里指定位置，`codex_labels` 给账号起名。设置里「Codex 实时额度」可以关掉。
 - Multiple Codex accounts: switching accounts used to make the widget jump between them, because it only took the newest limit entry from the logs. It now reads `auth.json` to know the signed-in account, tells accounts apart by their limit reset times (even when a session started before the switch is still running), shows each account separately, and suggests switching when the current one is almost out.

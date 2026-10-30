@@ -29,6 +29,7 @@ DEFAULTS = {
     "codex_auth_files": [],     # 其他账号登录信息的位置（文件或目录），自动找不到时手动填
     "codex_labels": {},         # 账号显示名，例如 {"me@example.com": "主号"}
     "codex_poll_seconds": 180,
+    "codex_switch": False,      # 手动切号（只在点按钮时换 auth.json，见 providers/codex_switch.py）
     "warn_percent": 70,
     "danger_percent": 90,
     "snap_distance": 48,
@@ -45,7 +46,7 @@ DEFAULTS = {
 }
 
 # 允许界面修改的键
-EDITABLE = {"sources", "style", "mode", "lang", "claude_refresh", "codex_live", "warn_percent", "danger_percent",
+EDITABLE = {"sources", "style", "mode", "lang", "claude_refresh", "codex_live", "codex_switch", "warn_percent", "danger_percent",
             "snap_distance", "snap_margin", "hide_on_fullscreen", "local_log_dirs", "seen"}
 
 

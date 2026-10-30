@@ -23,6 +23,7 @@ from pathlib import Path
 from .common import History, local_date, now, parse_iso, today, window_info  # noqa: F401
 
 CODEX_USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"
+CODEX_ACCOUNTS_URL = "https://chatgpt.com/backend-api/wham/accounts/check"  # Codex 桌面版查空间名用的同一个
 AUTH_CLAIM = "https://api.openai.com/auth"
 PROFILE_CLAIM = "https://api.openai.com/profile"
 SAME = 150             # 秒：同一个窗口在不同请求里报的重置时间会差一两秒
@@ -240,13 +241,33 @@ def parse_api(data):
     return norm_windows(rl, now()), plan
 
 
-def fetch_usage(ident, timeout=10):
+def _get_json(url, ident, timeout):
     h = {"Authorization": "Bearer " + ident["token"], "User-Agent": "codex-cli", "Accept": "application/json"}
     if ident.get("account_id"):
         h["ChatGPT-Account-Id"] = ident["account_id"]
-    req = urllib.request.Request(CODEX_USAGE_URL, headers=h)
+    req = urllib.request.Request(url, headers=h)
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode("utf-8"))
+
+
+def fetch_usage(ident, timeout=10):
+    return _get_json(CODEX_USAGE_URL, ident, timeout)
+
+
+def parse_workspace_name(data, account_id):
+    """官方账号接口的返回 -> 这个空间的名字；个人空间或没有名字返回 None。列表和字典两种格式都认。"""
+    accs = data.get("accounts") if isinstance(data, dict) else None
+    if isinstance(accs, dict):
+        accs = [v.get("account") for v in accs.values() if isinstance(v, dict)]
+    for a in accs if isinstance(accs, list) else ():
+        if isinstance(a, dict) and (a.get("id") or a.get("account_id")) == account_id:
+            name = a.get("name")
+            return name.strip() or None if isinstance(name, str) and a.get("structure") != "personal" else None
+    return None
+
+
+def fetch_workspace_name(ident, timeout=10):
+    return parse_workspace_name(_get_json(CODEX_ACCOUNTS_URL, ident, timeout), ident.get("account_id"))
 
 
 def _fp(w):
@@ -411,6 +432,11 @@ def _tok_hash(t):
     return hashlib.sha256(t.encode()).hexdigest()[:16]
 
 
+def key_id(key):
+    """账号 key（含邮箱）的短 ID：切号功能的文件名和界面里用它，不暴露邮箱。"""
+    return hashlib.sha256(key.encode()).hexdigest()[:12]
+
+
 # ---------------------------------------------------------------- 采集
 class CodexCollector:
     def __init__(self, sessions_dir, cache, history, data_dir=None, opts=None):
@@ -427,6 +453,7 @@ class CodexCollector:
         self.found_paths = {}
         self.found_at = 0
         self._found_cfg = None
+        self.vault_keys = set()  # 切号功能保存的身份，界面上优先显示
         self.next_poll = {}
         self.tok = {}
         self.err = {}
@@ -580,7 +607,7 @@ class CodexCollector:
         o = self.opts() or {}
         cfg = (bool(o.get("others", True)), tuple(o.get("extra") or ()))
         if not cfg[0]:
-            self.found, self.found_paths = {}, {}
+            self.found, self.found_paths, self.vault_keys = {}, {}, set()
             return
         if not force and cfg == self._found_cfg and now() - self.found_at < DISCOVER_EVERY:
             return
@@ -594,6 +621,15 @@ class CodexCollector:
                 if k not in found or (ident.get("exp") or 0) > (found[k].get("exp") or 0):
                     found[k] = ident
                     paths[k] = path
+        vault = o.get("vault")
+        vault_keys = set()
+        for ident in (vault() if vault else ()):  # 小组件自己切号时加密保存的身份
+            k = ident["key"]
+            vault_keys.add(k)
+            if k not in found or (ident.get("exp") or 0) > (found[k].get("exp") or 0):
+                found[k] = ident
+                paths[k] = "codex_vault"
+        self.vault_keys = vault_keys
         self.found, self.found_paths, self.found_at, self._found_cfg = found, paths, now(), cfg
         with self.lock:
             for k, ident in found.items():
@@ -680,14 +716,15 @@ class CodexCollector:
         with self.lock:
             accs = self.store.accs
             keys = [k for k, a in accs.items() if k == cur or a.get("snap")]
-            keys.sort(key=lambda k: (k != cur, bool(accs[k].get("anon")), -(accs[k].get("seen") or 0)))
-            keys = keys[:MAX_SHOWN]
+            keys.sort(key=lambda k: (k != cur, k not in self.vault_keys, bool(accs[k].get("anon")),
+                                     -(accs[k].get("seen") or 0)))
+            keys = keys[:max(MAX_SHOWN, len(self.vault_keys))]  # 保存的身份都要有额度可显示
             out, names = [], {}
             for k in keys:
                 a = accs[k]
                 snap = a.get("snap") or {}
                 w = snap.get("w") or {}
-                e = {"label": self._label(k, a, labels), "plan": a.get("plan"), "current": k == cur,
+                e = {"id": key_id(k), "label": self._label(k, a, labels), "plan": a.get("plan"), "current": k == cur,
                      "anon": bool(a.get("anon")), "updated": snap.get("ts"), "src": snap.get("src"),
                      "error": self.err.get(k) if k in self.found or k == cur else None,
                      "live": bool(self.found.get(k) or k == cur)}

@@ -63,6 +63,20 @@ body.open.up .pill{border-bottom:0;border-top:1px solid var(--line)}
 .oa .ol{overflow:hidden;text-overflow:ellipsis;max-width:96px}
 .oa b{font-weight:600;color:var(--ink)}
 .oa .om{margin-left:auto;color:var(--ink3);overflow:hidden;text-overflow:ellipsis}
+.sg{display:grid;grid-template-columns:6px minmax(0,1fr) 34px 34px 42px;column-gap:6px;align-items:center;font-size:11px;color:var(--ink2);padding:3px 0 1px}
+.sg.hd{color:var(--ink3);padding:1px 0 0}
+.sg .sl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sg .sn{text-align:right;font-weight:600;color:var(--ink)}
+.sg.hd .sn{font-weight:400;color:var(--ink3)}
+.sg .sn.warn{color:var(--warn)}.sg .sn.bad{color:var(--bad)}
+.sg .sa{text-align:right;color:var(--ink3)}
+.sg .sa button{color:var(--ink);background:var(--hover);padding:1px 6px}
+.swb{margin-top:5px;padding-top:4px;border-top:1px solid var(--line)}
+.swm{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;color:var(--ink2);min-height:20px;margin-top:2px}
+.swm span{white-space:normal}
+.swm.err span{color:var(--bad)}
+.swm div{display:flex;gap:2px;flex:none}
+.swm button{color:var(--ink);background:var(--hover);padding:2px 8px}
 .ctl{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:7px;font-size:11px;color:var(--ink2);min-height:20px}
 .ctl span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ctl.err span{color:var(--bad)}
@@ -100,6 +114,7 @@ a{color:var(--ink2);text-decoration:underline;text-underline-offset:2px;cursor:p
 .foot{display:flex;justify-content:space-between;align-items:center;margin:12px 0 2px;font-size:10px;color:var(--ink3)}
 .foot a{color:var(--ink3)}
 .foot button.pri{color:var(--ink);background:var(--hover);padding:3px 12px;font-size:12px}
+.opt button.pri{color:var(--ink);background:var(--hover);padding:2px 10px;flex:none}
 </style>
 </head>
 <body class="s-smoke">
@@ -123,6 +138,7 @@ a{color:var(--ink2);text-decoration:underline;text-underline-offset:2px;cursor:p
         <div class="tr"><i id="xB"></i><s id="xP" class="hide"></s></div>
         <div class="mt"><span id="xM1"></span><span id="xM2"></span></div>
         <div class="oas hide" id="xO"></div>
+        <div class="oas swb hide" id="xW"></div>
       </div>
       <div class="sec" id="sL">
         <div class="top"><span class="nm"><span class="dot" id="lD"></span><span id="lN"></span></span><span class="big" id="lV">—</span></div>
@@ -140,6 +156,8 @@ a{color:var(--ink2);text-decoration:underline;text-underline-offset:2px;cursor:p
       <div class="opt"><span data-t="opt_style"></span><span class="seg" id="seg"><button data-s="smoke" data-t="st_smoke"></button><button data-s="frost" data-t="st_frost"></button><button data-s="clear" data-t="st_clear"></button></span></div>
       <div class="opt"><span data-t="opt_refresh"></span><span class="sw" id="oRefresh"></span></div>
       <div class="opt"><span data-t="opt_codex_live"></span><span class="sw" id="oCodex"></span></div>
+      <div class="opt"><span data-t="opt_codex_switch"></span><span class="sw" id="oSwitch"></span></div>
+      <div class="opt hide" id="swAddRow"><span data-t="sw_add_hint"></span><button class="pri" id="bSwAdd" data-t="sw_add"></button></div>
       <div class="opt"><span data-t="opt_autostart"></span><span class="sw" id="oAuto"></span></div>
       <div class="opt"><span data-t="opt_fullscreen"></span><span class="sw" id="oFull"></span></div>
       <div class="opt"><span data-t="opt_margin"></span><span class="step"><button id="mMinus">−</button><span id="mVal"></span><button id="mPlus">+</button></span></div>
@@ -168,6 +186,9 @@ zh:{setup_hint:'点这里设置',empty:'还没有选择要显示的内容。',op
  acc_other:'其他账号',acc_live:'实时',acc_log:'最后使用 {0}',acc_expired:'登录已过期，显示的是最后一次的额度',
  ex_token_expired:'Codex 登录已过期 · 打开 Codex 用一次',ex_network:'网络错误，稍后重试',ex_http:'额度接口 HTTP {0}',
  a_switch:'{0} 快用完了，{1} 还剩 {2}%，可以切过去',
+ opt_codex_switch:'Codex 手动切号',sw_used:'已用',sw_week:'周',sw_cur:'当前',sw_go:'切换',sw_save:'保存',sw_add:'添加身份',sw_add_hint:'登录另一个账号或空间',sw_busy:'处理中…',sw_ok:'确认',sw_no:'取消',
+ sw_unsaved:'当前登录还没保存',sw_nologin:'请在 Codex 里登录，选好空间后回到这里保存',sw_auth:'当前不是 ChatGPT 登录，无法切换',sw_confirm:'要关闭 Codex，进行中的任务会中断',
+ sw_e_cockpit:'请先退出 Cockpit Tools，它会和切号抢同一份令牌',sw_e_foreign:'还有 Codex 命令行在运行，请先结束它',sw_e_unsaved:'当前登录还没保存，请先保存',sw_e_auth_unknown:'当前不是 ChatGPT 登录，未改动',sw_e_close_failed:'Codex 没能关闭，未切换',sw_e_slot_unreadable:'这个身份读不出来，请重新登录一次',sw_e_no_login:'当前没有登录',sw_e_running:'Codex 正在运行',sw_e_failed:'操作失败，详见 error.log',
  e_not_logged_in:'未登录 Claude Code',e_token_expired:'令牌已过期 · 运行一次 claude 刷新',e_refresh_failed:'令牌刷新失败 · 运行一次 claude 重新登录',e_network:'网络错误，稍后重试',e_http:'额度接口 HTTP {0}',
  lm_unloaded:'模型已卸载',lm_loading:'加载中 {0}',lm_unloading:'卸载中…',lm_loaded:'已加载',lm_took:'用时 {0} 秒',lm_other:'已加载：{0}',lm_load:'加载',lm_unload:'卸载',lm_err:'失败：{0}',
  le_no_model:'LM Studio 里没找到 Flash-Next',le_server_down:'LM Studio 服务启动失败',le_no_lms:'找不到 lms 命令',le_auth:'LM Studio 开启了 API 鉴权',
@@ -187,6 +208,9 @@ en:{setup_hint:'Click to set up',empty:'Nothing selected to show yet.',open_sett
  acc_other:'Other account',acc_live:'live',acc_log:'last used {0}',acc_expired:'login expired, showing the last known usage',
  ex_token_expired:'Codex login expired · open Codex once',ex_network:'network error, retrying',ex_http:'usage API HTTP {0}',
  a_switch:'{0} is almost out — {1} has {2}% left, switch to it',
+ opt_codex_switch:'Manual Codex account switching',sw_used:'used',sw_week:'week',sw_cur:'current',sw_go:'Switch',sw_save:'Save',sw_add:'Add identity',sw_add_hint:'Sign in to another account or workspace',sw_busy:'working…',sw_ok:'Confirm',sw_no:'Cancel',
+ sw_unsaved:'Current login is not saved yet',sw_nologin:'Sign in to Codex, pick a workspace, then come back to save',sw_auth:'Not a ChatGPT login, cannot switch',sw_confirm:'This closes Codex and interrupts running tasks',
+ sw_e_cockpit:'Quit Cockpit Tools first: it competes for the same tokens',sw_e_foreign:'A Codex CLI is still running, end it first',sw_e_unsaved:'Save the current login first',sw_e_auth_unknown:'Not a ChatGPT login, nothing changed',sw_e_close_failed:'Could not close Codex, nothing switched',sw_e_slot_unreadable:'This identity cannot be read, sign in again',sw_e_no_login:'Not signed in',sw_e_running:'Codex is running',sw_e_failed:'Failed, see error.log',
  e_not_logged_in:'Claude Code not logged in',e_token_expired:'token expired · run claude once',e_refresh_failed:'token refresh failed · run claude to log in',e_network:'network error, retrying',e_http:'usage API HTTP {0}',
  lm_unloaded:'model unloaded',lm_loading:'loading {0}',lm_unloading:'unloading…',lm_loaded:'loaded',lm_took:'took {0}s',lm_other:'loaded: {0}',lm_load:'Load',lm_unload:'Unload',lm_err:'failed: {0}',
  le_no_model:'Flash-Next not found in LM Studio',le_server_down:'LM Studio server did not start',le_no_lms:'lms command not found',le_auth:'LM Studio API auth is on',
@@ -225,19 +249,54 @@ function quota(p,key,st){
 // Codex 多账号：标题旁显示当前号，下面列出其他号；返回额度最充足的其他号（用来提示切号）
 function accounts(st){
   const d=st.codex||{},list=d.accounts||[],multi=list.length>1,box=$('xO');
-  $('xA').textContent=multi&&d.account?'· '+d.account:'';$('xA').title=multi&&list[0]&&list[0].plan?list[0].plan:'';
-  $('pX').title=multi&&d.account?'Codex · '+d.account:'';
+  const slots=SW&&SW.enabled?SW.slots:[],slotOf=e=>slots.find(s=>s.id===e.id),curSlot=slots.find(s=>s.current),curName=curSlot?curSlot.label:(multi&&d.account);
+  $('xA').textContent=curName?'· '+curName:'';$('xA').title=multi&&list[0]&&list[0].plan?list[0].plan:'';
+  $('pX').title=curName?'Codex · '+curName:'';
   const others=list.filter(e=>!e.current);let best=null,n=0;
-  box.classList.toggle('hide',!multi||!others.length);
-  box.innerHTML=multi?others.map(e=>{
+  const rows=multi?others.map(e=>{
     let w=e.five_hour,wk=e.weekly;const wkOnly=!w&&!!wk;if(wkOnly){w=wk;wk=null}
-    const name=e.label||(t('acc_other')+(others.filter(x=>!x.label).length>1?' '+(++n):''));
+    const sl=slotOf(e),name=sl?sl.label:(e.label||(t('acc_other')+(others.filter(x=>!x.label).length>1?' '+(++n):'')));
     const used=Math.max(...[e.five_hour,e.weekly].filter(Boolean).map(x=>x.used),0);
     if((e.five_hour||e.weekly)&&used<st.warn&&(!best||100-used>best.left))best={label:name,left:Math.round(100-used)};
+    if(sl)return '';  // 保存过的身份显示在下面的切换列表里
     const tip=[e.plan,e.src==='api'&&e.live&&!e.error?t('acc_live'):(e.updated?t('acc_log',ago(e.updated)):''),e.error==='token_expired'?t('acc_expired'):''].filter(Boolean).join(' · ');
     const meta=w?(wkOnly?t('week_only')+' · ':'')+(w.reset_passed?t('window_reset'):t('reset_in',until(w.resets_at)))+(wk?' · '+t('weekly',Math.round(wk.used)):''):t('no_data');
     return '<div class="oa" title="'+esc(tip)+'"><span class="dot '+(w?(level(w,st)||'ok'):'')+'"></span><span class="ol">'+esc(name)+'</span><b>'+(w?Math.round(w.used)+'%':'—')+'</b><span class="om">'+meta+'</span></div>'}).join(''):'';
+  box.classList.toggle('hide',!rows);box.innerHTML=rows;
   return best}
+// Codex 手动切号：列出保存的身份，切换前要关 Codex 的先确认。状态从 switch_state 取，不进 /status.json。
+let SW=null,swAsk=null,swBusy=false,swErr='';
+async function pullSw(){const r=await api('switch_state');if(r){SW=r;if(S)render(S)}}
+function switchBox(st){
+  const box=$('xW'),on=!!(SW&&SW.enabled&&(st.enabled||{}).codex);box.classList.toggle('hide',!on);
+  if(!on){if(box.innerHTML)box.innerHTML='';return}
+  const acc=(st.codex&&st.codex.accounts)||[];
+  const lv=x=>!x?'':x.used>=st.danger?'bad':x.used>=st.warn?'warn':'';
+  const cell=x=>'<span class="sn '+lv(x)+'">'+(x?Math.round(x.used)+'%':'—')+'</span>';
+  const head=SW.slots.length?'<div class="sg hd"><span></span><span>'+t('sw_used')+'</span><span class="sn">5h</span><span class="sn">'+t('sw_week')+'</span><span></span></div>':'';
+  const rows=SW.slots.map(s=>{const e=acc.find(x=>x.id===s.id)||{},h=e.five_hour,wk=e.weekly,ws=[lv(h),lv(wk)];
+    const tip=[s.email,s.plan,h?'5h '+(h.reset_passed?t('window_reset'):t('reset_in',until(h.resets_at))):'',wk?t('sw_week')+' '+(wk.reset_passed?t('window_reset'):t('reset_in',until(wk.resets_at))):'',e.error==='token_expired'?t('acc_expired'):''].filter(Boolean).join(' · ');
+    const dot=ws.includes('bad')?'bad':ws.includes('warn')?'warn':(h||wk)?'ok':'';
+    return '<div class="sg" title="'+esc(tip)+'"><span class="dot '+dot+'"></span><span class="sl">'+esc(s.label)+'</span>'+cell(h)+cell(wk)+'<span class="sa">'+
+      (s.current?t('sw_cur'):'<button data-a="go" data-id="'+esc(s.id)+'">'+t('sw_go')+'</button>')+'</span></div>'}).join('');
+  const msg=swBusy?t('sw_busy'):swAsk?t('sw_confirm'):swErr?t('sw_e_'+swErr):SW.auth_unknown?t('sw_auth'):SW.no_login?t('sw_nologin'):SW.unsaved?t('sw_unsaved'):SW.cockpit?t('sw_e_cockpit'):'';
+  const btns=swBusy?'':swAsk?'<button data-a="yes">'+t('sw_ok')+'</button><button data-a="no">'+t('sw_no')+'</button>':SW.unsaved?'<button data-a="save">'+t('sw_save')+'</button>':'';
+  const foot=msg||btns?'<div class="swm'+(swErr&&!swBusy&&!swAsk?' err':'')+'"><span>'+esc(msg)+'</span><div>'+btns+'</div></div>':'';  // 没有提示就不占位
+  box.classList.toggle('hide',!head&&!foot);
+  const html=head+rows+foot;
+  if(box.dataset.h!==html){box.dataset.h=html;box.innerHTML=html}  // 内容没变不重建，否则点到一半按钮被换掉，这次点击就丢了
+}
+function swAdd(){if(!SW||!SW.enabled)return;swErr='';
+  if(SW.running){swAsk={kind:'add'};if(S)render(S)}else swRun('codex_add',false)}
+async function swRun(name,...a){swBusy=true;swErr='';swAsk=null;if(S)render(S);
+  const r=await api(name,...a);swBusy=false;if(!r||!r.ok)swErr=(r&&r.error)||'failed';
+  await pullSw();if(S)render(S);setTimeout(pull,500)}
+$('xW').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||swBusy)return;const a=b.dataset.a,id=b.dataset.id;
+  if(a==='save')swRun('codex_save');
+  else if(a==='no'){swAsk=null;swErr='';if(S)render(S)}
+  else if(a==='yes'){const k=swAsk;k.kind==='add'?swRun('codex_add',true):swRun('codex_switch',k.id,true)}
+  else if(a==='go'){  // 要关 Codex 时先问，没开着就直接做
+    if(SW.running){swAsk={kind:'go',id};swErr='';if(S)render(S)}else swRun('codex_switch',id,false)}});
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function ago(ts){const d=new Date(ts*1000),n=new Date();return (d.toDateString()===n.toDateString()?'':(d.getMonth()+1)+'-'+d.getDate()+' ')+hm(ts)}
 function spark(arr){
@@ -261,7 +320,7 @@ function render(st){
     $(pp+'V').textContent=q.txt;$(pp+'D').className='dot '+(q.lv||(q.w?'ok':''));
     $(pp+'E').textContent=single&&q.w?(q.wk?t('weekly',Math.round(q.wk.used))+' · ':'')+until(q.w.resets_at):'';
   }
-  const alt=en.codex?accounts(st):null;
+  const alt=en.codex?accounts(st):null;switchBox(st);
   for(const k of ['claude','codex']){const q=Q[k];if(!q||!q.w)continue;const w=q.w,nm=NAMES[k],other=k==='claude'?'codex':'claude',o=Q[other];
     if(w.used>=st.danger){if(k==='codex'&&alt)alerts.push(['bad',t('a_switch',nm+(st.codex.account?' '+st.codex.account:''),alt.label,alt.left)]);
       else if(en.local)alerts.push(['bad',t('a_out_local',nm)]);
@@ -318,7 +377,7 @@ function renderSet(){
     return '<div class="row'+(src[k]?' on':'')+(k==='gpu'?' sub':'')+'" data-k="'+k+'"><span class="ck"></span><span class="rt"><b>'+t(lab)+'</b>'+nb+'<p class="'+(ok?'okt':'')+'">'+detText(k,d)+link+'</p></span></div>'}).join('');
   $('srcRows').querySelectorAll('.row').forEach(r=>r.onclick=e=>{if(e.target.dataset.url){api('open_url',e.target.dataset.url);return}
     saveSet({sources:{[r.dataset.k]:!r.classList.contains('on')}})});
-  $('oRefresh').classList.toggle('on',!!st.claude_refresh);$('oCodex').classList.toggle('on',st.codex_live!==false);$('oFull').classList.toggle('on',!!st.hide_on_fullscreen);$('oAuto').classList.toggle('on',!!D.autostart);
+  $('oRefresh').classList.toggle('on',!!st.claude_refresh);$('oCodex').classList.toggle('on',st.codex_live!==false);$('oSwitch').classList.toggle('on',!!st.codex_switch);$('swAddRow').classList.toggle('hide',!st.codex_switch);$('oFull').classList.toggle('on',!!st.hide_on_fullscreen);$('oAuto').classList.toggle('on',!!D.autostart);
   $('mVal').textContent=(st.snap_margin??8)+'px';
   document.querySelectorAll('#langSeg button').forEach(b=>b.classList.toggle('on',b.dataset.l===(st.lang||'auto')));
   $('dataDir').textContent=t('data_dir')+' · v'+(D.version||'');
@@ -340,6 +399,8 @@ $('pN').onclick=openSettings;
 $('bDone').onclick=()=>{closeSet();pinned=false;updPin();if(!hover)setOpen(false)};
 $('oRefresh').onclick=()=>saveSet({claude_refresh:!$('oRefresh').classList.contains('on')});
 $('oCodex').onclick=()=>saveSet({codex_live:!$('oCodex').classList.contains('on')});
+$('oSwitch').onclick=async()=>{await saveSet({codex_switch:!$('oSwitch').classList.contains('on')});pullSw()};
+$('bSwAdd').onclick=async()=>{closeSet();pinned=false;updPin();await pullSw();swAdd()};  // 回到主界面，确认和提示都在切换列表下面
 $('oFull').onclick=()=>saveSet({hide_on_fullscreen:!$('oFull').classList.contains('on')});
 $('oAuto').onclick=async()=>{const want=!$('oAuto').classList.contains('on');$('oAuto').classList.toggle('on',want);const r=await api('set_autostart',want);if(SETDATA){SETDATA.autostart=!!r;renderSet()}};
 $('mMinus').onclick=()=>saveSet({snap_margin:Math.max(0,((SETDATA&&SETDATA.settings.snap_margin)??8)-2)});
@@ -347,7 +408,7 @@ $('mPlus').onclick=()=>saveSet({snap_margin:Math.min(40,((SETDATA&&SETDATA.setti
 document.querySelectorAll('#langSeg button').forEach(b=>b.onclick=()=>{saveSet({lang:b.dataset.l});setLang(b.dataset.l)});
 $('dataDir').onclick=()=>api('open_data_dir');
 function fit(){const r=$('app').getBoundingClientRect();const k=Math.ceil(r.width)+'x'+Math.ceil(r.height);if(k!==lastH&&window.pywebview&&pywebview.api){lastH=k;pywebview.api.fit(Math.ceil(r.width),Math.ceil(r.height))}}
-async function setOpen(v){if(open===v)return;open=v;if(v){const i=await api('init');if(i)document.body.classList.toggle('up',!!i.up)}
+async function setOpen(v){if(open===v)return;open=v;if(v){pullSw();const i=await api('init');if(i)document.body.classList.toggle('up',!!i.up)}
   else if(view==='set')showView('main');document.body.classList.toggle('open',v);requestAnimationFrame(fit)}
 function updPin(){$('bPin').textContent=t(pinned?'unpin':'pin');$('bPin').classList.toggle('on',pinned)}
 function scheduleOpen(){clearTimeout(openTimer);if(mode==='popup'&&!dragging&&!open)openTimer=setTimeout(()=>{if(hover&&!dragging)setOpen(true)},280)}
@@ -380,6 +441,7 @@ const q=new URLSearchParams(location.search);
 setLang(q.get('lang')||'auto');setStyle(q.get('style')||'smoke',false);
 if(q.get('open'))setOpen(true);
 setInterval(pull,1000);
+setInterval(()=>{if(open&&!swBusy)pullSw()},3000);
 // 开机时 Python 那边可能还很忙，init 偶尔拿不到；拿不到就重试，否则会一直停在默认样式
 window.addEventListener('pywebviewready',async()=>{let i=null;
   for(let n=0;n<30&&!i;n++){i=await api('init');if(!i)await new Promise(r=>setTimeout(r,1000))}

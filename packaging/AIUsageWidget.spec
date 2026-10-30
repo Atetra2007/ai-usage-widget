@@ -12,7 +12,7 @@ a = Analysis(
     datas=[(os.path.join(APP, 'ui'), 'ui')],
     hiddenimports=[
         'paths', 'settings',
-        'providers', 'providers.common', 'providers.claude', 'providers.codex',
+        'providers', 'providers.common', 'providers.claude', 'providers.codex', 'providers.codex_switch',
         'providers.local', 'providers.gpu', 'providers.lmctl',
         'webview.platforms.winforms', 'webview.platforms.edgechromium', 'clr',
     ],

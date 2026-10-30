@@ -19,6 +19,7 @@ import paths  # noqa: E402
 import settings as S  # noqa: E402
 from providers import claude as P_claude  # noqa: E402
 from providers import codex as P_codex  # noqa: E402
+from providers import codex_switch as P_switch  # noqa: E402
 from providers import gpu as P_gpu  # noqa: E402
 from providers import local as P_local  # noqa: E402
 from providers import lmctl as P_lmctl  # noqa: E402
@@ -60,6 +61,7 @@ class Engine:
         self.history = History(os.path.join(DATA, "history.json"))
         self.claude = P_claude.ClaudeCollector(P_claude.default_dir(), self.cache, self.history, DATA,
                                                st.get("claude_poll_seconds", 180), st.get("claude_refresh", True))
+        self.switch = P_switch.CodexSwitcher(P_codex.codex_home(), os.path.join(DATA, "codex_vault"))
         self.codex = P_codex.CodexCollector(P_codex.default_dir(), self.cache, self.history, DATA, self._codex_opts)
         self._local_dirs = None
         self.local = None
@@ -101,11 +103,14 @@ class Engine:
                 "others": bool(self.st.get("codex_other_accounts", True)),
                 "extra": self.st.get("codex_auth_files") or [],
                 "poll": self.st.get("codex_poll_seconds", 180),
-                "labels": self.st.get("codex_labels") or {}}
+                "labels": self.st.get("codex_labels") or {},
+                "vault": self.switch.identities if self.st.get("codex_switch") else None}
 
     def _codex_api(self):
         if self.on("codex"):
             self.codex.poll()
+            if self.st.get("codex_switch") and self.st.get("codex_live", True):
+                self.switch.refresh_names()
 
     def _claude(self):
         if self.on("claude"):
@@ -512,6 +517,38 @@ class Api:
     def local_unload(self):
         ENGINE.lmctl.unload()
         return ENGINE.lmctl.build()
+
+    # ---- Codex 手动切号（只给窗口用，不走 HTTP 接口）
+    def switch_state(self):
+        if not SETTINGS.get("codex_switch"):
+            return {"enabled": False}
+        try:
+            return ENGINE.switch.status()
+        except Exception:
+            log_error("codex switch state")
+            return {"enabled": False}
+
+    def _switch_call(self, fn, *a):
+        if not SETTINGS.get("codex_switch"):
+            return {"ok": False, "error": "failed"}
+        try:
+            fn(*a)
+        except P_switch.SwitchError as e:
+            return {"ok": False, "error": e.code}
+        except Exception:
+            log_error("codex switch")
+            return {"ok": False, "error": "failed"}
+        ENGINE.kick()
+        return {"ok": True}
+
+    def codex_switch(self, slot, close=False):
+        return self._switch_call(ENGINE.switch.switch, str(slot), bool(close))
+
+    def codex_save(self):
+        return self._switch_call(ENGINE.switch.save_current)
+
+    def codex_add(self, close=False):
+        return self._switch_call(ENGINE.switch.begin_login, bool(close))
 
     def quit(self):
         ENGINE.stop.set()

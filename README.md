@@ -60,12 +60,15 @@ Windows 桌面上的一条透明小胶囊，实时显示 **Claude**、**Codex** 
 - **小组件不见了**：全屏玩游戏 / 看视频时会自动隐藏，退出全屏就回来。如果一直不出现，可能是程序退出了：重新打开它；反馈问题时请附上数据目录里的 `error.log`。
 - **杀毒软件或 SmartScreen 拦截**：exe 没有代码签名。可以用 Release 页面上的 SHA256 核对下载的文件，或者从源码运行。
 - **Codex 用了好几个账号**：小组件读 `~/.codex/auth.json` 认出当前登录的号，再用额度窗口的重置时间区分日志里各个号的记录，切号后也不会把两个号的额度混在一起。用 Cockpit Tools、cc-switch、codex-switch 这类切换工具时，会自动找它们保存的其他账号一起查询实时额度；找不到的话，其他号显示最后一次使用时的额度。工具把账号存在别的地方时，可以在 `settings.json` 的 `codex_auth_files` 里填文件或文件夹路径；`codex_labels` 可以给账号起名字，例如 `{"me@example.com": "主号"}`。
+- **想在几个 Codex 账号之间切换**：在设置里打开「Codex 手动切号」（目前只支持微软商店版 Codex）。当前登录点「保存」，再到设置里点「添加身份」，在打开的 Codex 里登录另一个号或空间，回来保存。名字会自动用空间名，列表里同时显示每个身份已用的 5 小时额度和周额度。之后点「切换」就行，对话、项目和设置都共用。需要关闭 Codex 时会先问你。不要在 Codex 里点「退出登录」，那会吊销令牌；也不要和 Cockpit Tools 这类工具同时用，它们会抢同一份 refresh token，导致 `refresh_token_reused`。
+- **切号后 Codex 要求重新登录**：这个身份的令牌失效了（比如太久没用，或被别的工具用过）。登录同一个号和空间，回到小组件点「保存」就会更新。加密备份在数据目录的 `codex_vault\backups`，把备份复制成 `codex_vault\<文件名最后的 ID>.dpapi` 可以恢复。
 - **端口 8765 被占用**：在 `settings.json` 里改 `http_port`，或把 `http_enabled` 设为 `false`。
 
 ## 隐私与说明
 
-- **所有数据都在你的电脑上。** 网络请求只有两个：向 Anthropic 查询 Claude 额度（`api.anthropic.com`），向 OpenAI 查询 Codex 额度（`chatgpt.com`，Codex 的 `/status` 用的同一个接口）。没有任何统计上报。
+- **所有数据都在你的电脑上。** 网络请求只有两个：向 Anthropic 查询 Claude 额度（`api.anthropic.com`），向 OpenAI 查询 Codex 额度（`chatgpt.com`，Codex 的 `/status` 用的同一个接口）。打开「Codex 手动切号」后，还会向 `chatgpt.com` 查一下空间名（Codex 桌面版用的同一个接口，每个身份大约一天一次）。没有任何统计上报。
 - Codex 额度查询只读取登录令牌，不会刷新或改写 `auth.json` 和切换工具里的任何文件，令牌也不会写进小组件的数据文件（`codex_accounts.json` 只存账号邮箱和额度）。不想联网查询可以在设置里关掉「Codex 实时额度」，只读本机会话日志；不想读取切换工具里的账号，把 `settings.json` 的 `codex_other_accounts` 设为 `false`。
+- 只有打开「Codex 手动切号」并点按钮时，小组件才会改写 `auth.json`。保存的登录信息用 Windows DPAPI 加密放在数据目录的 `codex_vault`，绑定当前 Windows 用户：文件被拷走也解不开，但以你的身份运行的程序可以解密。正在使用的 `auth.json` 仍是 Codex 自己的明文文件。令牌不会上传到除 OpenAI 以外的地方，也不会出现在 `/status.json` 里。切号只是省去重新登录，请遵守 OpenAI 的条款，不要用它规避用量限制或与他人共用账号。
 - Claude 和 Codex 的额度接口都是官方客户端内部使用的**非公开接口**，随时可能变化或失效。
 - 访问令牌过期时，小组件默认按 Claude Code 的方式刷新并写回 `~/.claude/.credentials.json`（写前会备份为 `.credentials.json.bak`）。极少数情况下和 Claude Code 同时刷新可能需要重新登录一次；不想要可以在设置里关掉，关掉后令牌过期时会提示你运行一次 `claude`。
 - 本地模型的逐字实时速度需要读取 llama.cpp 的 `/slots` 接口；Bionic 的内置服务器需要密钥，读不到时生成中显示的是最近几次的平均速度（标注「估算」），每条回复结束后用真实速度更新。
