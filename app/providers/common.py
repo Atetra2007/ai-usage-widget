@@ -133,6 +133,21 @@ class History:
                     json.dump(self.data, f, ensure_ascii=False, indent=1)
                 os.replace(tmp, self.path)
 
+    def add(self, source, day, vals):
+        """累加（用于额度增量这种只能按次累计的数据）。"""
+        with self.lock:
+            d = self.data.setdefault(source, {}).setdefault(day, {})
+            for k, v in vals.items():
+                d[k] = int(d.get(k, 0)) + int(v)
+            tmp = self.path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(self.data, f, ensure_ascii=False, indent=1)
+            os.replace(tmp, self.path)
+
+    def day(self, source, day=None):
+        with self.lock:
+            return dict(self.data.get(source, {}).get(day or today(), {}))
+
     def totals(self, source, field="total"):
         with self.lock:
             d = self.data.get(source, {})

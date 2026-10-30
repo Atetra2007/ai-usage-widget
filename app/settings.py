@@ -24,6 +24,11 @@ DEFAULTS = {
     "lang": "auto",             # auto / zh / en
     "claude_refresh": True,     # 访问令牌过期时自动刷新并写回 Claude Code 凭证
     "claude_poll_seconds": 180,
+    "codex_live": True,         # 用 Codex 登录令牌查官方额度接口（只读，不刷新令牌）；关掉就只看会话日志
+    "codex_other_accounts": True,  # 读取切换工具保存的其他 Codex 账号，一起查询额度
+    "codex_auth_files": [],     # 其他账号登录信息的位置（文件或目录），自动找不到时手动填
+    "codex_labels": {},         # 账号显示名，例如 {"me@example.com": "主号"}
+    "codex_poll_seconds": 180,
     "warn_percent": 70,
     "danger_percent": 90,
     "snap_distance": 48,
@@ -35,11 +40,12 @@ DEFAULTS = {
     "http_lan": False,
     "webview_gpu": True,        # WebView2 用 GPU 渲染。关掉（软件渲染）会让透明窗口变成分层窗口，
                                 # 导致 Win11 微软拼音候选栏不显示，所以默认开；GPU 进程崩溃由崩溃监听自动重启
+    "boot_delay": 40,           # 开机自启时登录后至少过这么多秒再显示窗口（太早建窗口透明可能失效），0 = 不等
     "dev_reload": False,        # 开发用：改代码自动重启
 }
 
 # 允许界面修改的键
-EDITABLE = {"sources", "style", "mode", "lang", "claude_refresh", "warn_percent", "danger_percent",
+EDITABLE = {"sources", "style", "mode", "lang", "claude_refresh", "codex_live", "warn_percent", "danger_percent",
             "snap_distance", "snap_margin", "hide_on_fullscreen", "local_log_dirs", "seen"}
 
 

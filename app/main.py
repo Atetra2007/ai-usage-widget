@@ -21,6 +21,7 @@ from providers import claude as P_claude  # noqa: E402
 from providers import codex as P_codex  # noqa: E402
 from providers import gpu as P_gpu  # noqa: E402
 from providers import local as P_local  # noqa: E402
+from providers import lmctl as P_lmctl  # noqa: E402
 from providers.common import FileCache, History  # noqa: E402
 
 VERSION = "1.0.3"
@@ -59,11 +60,12 @@ class Engine:
         self.history = History(os.path.join(DATA, "history.json"))
         self.claude = P_claude.ClaudeCollector(P_claude.default_dir(), self.cache, self.history, DATA,
                                                st.get("claude_poll_seconds", 180), st.get("claude_refresh", True))
-        self.codex = P_codex.CodexCollector(P_codex.default_dir(), self.cache, self.history)
+        self.codex = P_codex.CodexCollector(P_codex.default_dir(), self.cache, self.history, DATA, self._codex_opts)
         self._local_dirs = None
         self.local = None
         self._make_local()
         self.gpu = None
+        self.lmctl = P_lmctl.LMControl()  # 本地模型手动加载 / 卸载
         self.detect = S.detect_all(st.data)
         self.lock = threading.Lock()
         self.state = {}
@@ -94,6 +96,17 @@ class Engine:
             self.claude.scan_tokens()
         self.cache.save()
 
+    def _codex_opts(self):
+        return {"live": bool(self.st.get("codex_live", True)),
+                "others": bool(self.st.get("codex_other_accounts", True)),
+                "extra": self.st.get("codex_auth_files") or [],
+                "poll": self.st.get("codex_poll_seconds", 180),
+                "labels": self.st.get("codex_labels") or {}}
+
+    def _codex_api(self):
+        if self.on("codex"):
+            self.codex.poll()
+
     def _claude(self):
         if self.on("claude"):
             self.claude.allow_refresh = bool(self.st.get("claude_refresh", True))
@@ -101,6 +114,10 @@ class Engine:
 
     def _gpu(self):
         self.gpu = P_gpu.read_gpu() if (self.on("local") and self.on("gpu")) else None
+
+    def _lm(self):
+        if self.on("local"):
+            self.lmctl.poll()
 
     def _detect(self):
         self.detect = S.detect_all(self.st.data)
@@ -119,6 +136,7 @@ class Engine:
               "claude": self.claude.build() if enabled["claude"] else None,
               "codex": self.codex.state if enabled["codex"] else None,
               "local": self.local.build(self.gpu) if enabled["local"] else None,
+              "lmctl": self.lmctl.build() if enabled["local"] else None,
               "warn": self.st.get("warn_percent", 70), "danger": self.st.get("danger_percent", 90)}
         with self.lock:
             self.state = st
@@ -126,9 +144,10 @@ class Engine:
     def kick(self):
         """设置改动后立刻刷新一遍。"""
         self.claude.next_poll = 0
+        self.codex.kick()
         if self.local:
             self.local._last_full = 0
-        for fn in (self._detect, self._slow, self._claude, self._gpu, self._fast):
+        for fn in (self._detect, self._slow, self._claude, self._codex_api, self._gpu, self._fast):
             threading.Thread(target=lambda f=fn: self._safe(f), daemon=True).start()
 
     def _safe(self, fn):
@@ -138,8 +157,9 @@ class Engine:
             log_error("kick")
 
     def start(self):
-        for name, iv, fn in (("slow", 15, self._slow), ("claude", 15, self._claude), ("gpu", 2, self._gpu),
-                             ("detect", 60, self._detect), ("fast", 1, self._fast)):
+        for name, iv, fn in (("slow", 15, self._slow), ("claude", 15, self._claude), ("codex_api", 15, self._codex_api),
+                             ("gpu", 2, self._gpu),
+                             ("lmctl", 2, self._lm), ("detect", 60, self._detect), ("fast", 1, self._fast)):
             threading.Thread(target=self._loop, args=(name, iv, fn), daemon=True).start()
 
     def snapshot(self):
@@ -206,6 +226,63 @@ def system_dark():
         return winreg.QueryValueEx(k, "AppsUseLightTheme")[0] == 0
     except Exception:
         return False
+
+
+def uptime():
+    """开机多少秒。"""
+    if not IS_WIN:
+        return 0.0
+    import ctypes
+    f = ctypes.windll.kernel32.GetTickCount64
+    f.restype = ctypes.c_ulonglong
+    return f() / 1000
+
+
+def logon_age():
+    """登录后过了多少秒（按桌面 explorer.exe 的启动时间算）。桌面还没起来返回 0，拿不到返回 None。"""
+    if not IS_WIN:
+        return None
+    import ctypes
+    from ctypes import wintypes
+    k32, u32 = ctypes.windll.kernel32, ctypes.windll.user32
+    shell = u32.GetShellWindow()
+    if not shell:
+        return 0.0
+    pid = wintypes.DWORD()
+    u32.GetWindowThreadProcessId(shell, ctypes.byref(pid))
+    h = k32.OpenProcess(0x1000, False, pid.value)  # QUERY_LIMITED_INFORMATION
+    if not h:
+        return None
+    try:
+        ft = [wintypes.FILETIME() for _ in range(4)]
+        if not k32.GetProcessTimes(h, *[ctypes.byref(f) for f in ft]):
+            return None
+        created = ((ft[0].dwHighDateTime << 32) | ft[0].dwLowDateTime) / 1e7 - 11644473600
+        return max(0.0, time.time() - created)
+    finally:
+        k32.CloseHandle(h)
+
+
+def wait_for_desktop():
+    """开机自启时才登录几秒，显卡驱动、显示器、其他开机程序都还在初始化，这时建出来的透明窗口
+    有时会变成不透明，要退出重开才好。所以登录后不满 boot_delay 秒就先等一等再建窗口
+    （采集线程照常在跑，只是窗口晚一点出现）。自动重启出来的进程不等。"""
+    if not IS_WIN:
+        return
+    restarts = os.environ.get("AIW_RESTARTS", "0")
+    age = logon_age()
+    log_debug(f"start v{VERSION}: logon {'?' if age is None else f'{age:.0f}s'} ago, uptime {uptime():.0f}s, "
+              f"restarts {restarts}")
+    delay = float(SETTINGS.get("boot_delay", 40) or 0)
+    if restarts != "0" or age is None or age >= delay:
+        return
+    t0 = time.time()
+    while time.time() - t0 < delay + 20:  # 桌面一直没起来也最多等这么久
+        age = logon_age()
+        if age is not None and age >= delay:
+            break
+        time.sleep(1)
+    log_debug(f"boot: waited {time.time() - t0:.0f}s for the desktop to settle")
 
 
 def _dwm_set(hwnd, attr, value):
@@ -427,6 +504,15 @@ class Api:
     def refresh(self):
         ENGINE.kick()
 
+    # ---- 本地模型加载 / 卸载
+    def local_load(self):
+        ENGINE.lmctl.load()
+        return ENGINE.lmctl.build()
+
+    def local_unload(self):
+        ENGINE.lmctl.unload()
+        return ENGINE.lmctl.build()
+
     def quit(self):
         ENGINE.stop.set()
         self._window.destroy()
@@ -476,6 +562,15 @@ def win32_tweaks(api):
 
     class MONITORINFO(ctypes.Structure):
         _fields_ = [("cbSize", wintypes.DWORD), ("rcMonitor", RECT), ("rcWork", RECT), ("dwFlags", wintypes.DWORD)]
+
+    def reapply(why):
+        """DWM 的“玻璃”设置在显卡驱动重置、显示器重新连接后可能失效（窗口底色变成不透明的黑），重新套一次。"""
+        try:
+            apply_transparency(hwnd)
+            if why:
+                log_debug(f"transparency re-applied: {why}")
+        except Exception:
+            log_error("reapply transparency")
 
     shell = user32.GetShellWindow()
     desktop = user32.GetDesktopWindow()
@@ -542,14 +637,27 @@ def win32_tweaks(api):
                 form.Invoke(Action(kick))
         except Exception:
             log_error("show_again")
+        reapply("shown again")
         user32.SetWindowPos(hwnd, -1, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010)  # 重新置顶，不抢焦点
 
     api._show_again = show_again
 
+    def display_sig():
+        sm = user32.GetSystemMetrics  # 显示器数量 + 虚拟桌面范围 + 本窗口 DPI
+        return sm(80), sm(76), sm(77), sm(78), sm(79), user32.GetDpiForWindow(hwnd)
+
     def watch():
         hidden, streak = False, 0
+        sig, t_start, t_reapply = display_sig(), time.time(), time.time()
         while not ENGINE.stop.is_set():
             try:
+                s2 = display_sig()
+                if s2 != sig:
+                    reapply(f"display changed {sig} -> {s2}")
+                    sig, t_reapply = s2, time.time()
+                elif time.time() - t_start < 300 and time.time() - t_reapply > 30:
+                    reapply(None)  # 开机后显卡驱动 / 显示器可能还会重置一次，前 5 分钟定时补一次
+                    t_reapply = time.time()
                 fs, info = (False, None)
                 if SETTINGS.get("hide_on_fullscreen", True):
                     fs, info = is_fullscreen(user32.GetForegroundWindow())
@@ -568,12 +676,17 @@ def win32_tweaks(api):
     threading.Thread(target=watch, daemon=True).start()
 
 
-def restart_self(api, why):
+def restart_self(api, why, env_count=None):
+    """重启自己。env_count 是额外要 +1 的计数（环境变量名），用来限制同一种原因的重启次数。"""
     log_debug(f"restart: {why}")
     try:
         import subprocess
         cmd = [sys.executable] if paths.FROZEN else [sys.executable, os.path.abspath(__file__)]
-        subprocess.Popen(cmd, cwd=paths.ROOT, creationflags=0x08000000 if IS_WIN else 0)
+        env = dict(os.environ)
+        for k in ("AIW_RESTARTS", env_count):
+            if k:
+                env[k] = str(int(env.get(k, "0") or 0) + 1)
+        subprocess.Popen(cmd, cwd=paths.ROOT, env=env, creationflags=0x08000000 if IS_WIN else 0)
     except Exception:
         log_error("restart")
         return
@@ -611,37 +724,78 @@ def hook_process_failed(api, last=True):
         form.Invoke(Action(attach))
         log_debug("webview crash hook attached")
         return True
-    except Exception as e:
-        if last:
+    except Exception:
+        if last:  # 启动时 WebView2 常常还没就绪，会反复重试，只有最后一次失败才记
             log_error("hook_process_failed")
-        else:  # 启动时 WebView2 常常还没就绪，稍后会重试，不算错误
-            log_debug(f"crash hook not ready yet: {e}")
         return False
+
+
+SOFTWARE_GL = ("swiftshader", "basic render", "warp", "llvmpipe", "software")
+
+
+def run_js(api, code, timeout=8):
+    """在网页里执行一段 JS；超时或出错返回 (False, 异常)。"""
+    res = [None]
+
+    def probe():
+        try:
+            res[0] = api._window.evaluate_js(code)
+        except Exception as e:  # noqa
+            res[0] = e
+    t = threading.Thread(target=probe, daemon=True)
+    t.start()
+    t.join(timeout)
+    if t.is_alive() or isinstance(res[0], Exception):
+        return False, res[0]
+    return True, res[0]
+
+
+def check_renderer(api, last):
+    """WebView2 的 GPU 进程出问题（开机时显卡还没就绪、显存被占满等）后，Chromium 会整个进程
+    改用软件渲染，透明窗口就可能变成不透明，而且不会自己恢复。查一下 WebGL 用的是什么渲染器：
+    这台电脑以前用过显卡、现在却是软件渲染 / 拿不到 WebGL，就重启自己（最多连续 2 次）。"""
+    ok, r = run_js(api, "window.__gpu ? window.__gpu() : ''")
+    if not ok or not r:
+        return last
+    r = str(r)[:160]
+    if r != last:
+        log_debug(f"webview renderer: {r}")
+    soft = r == "none" or any(k in r.lower() for k in SOFTWARE_GL)
+    if not soft:
+        if load_ui().get("gpu_renderer") != r:
+            save_ui(gpu_renderer=r)
+        return r
+    if load_ui().get("gpu_renderer") and not ENGINE.stop.is_set():  # 这台电脑本来能用显卡
+        n = int(os.environ.get("AIW_GPU_RESTARTS", "0") or 0)
+        if n < 2:
+            restart_self(api, f"webview fell back to software rendering ({r})", env_count="AIW_GPU_RESTARTS")
+        elif r != last:
+            log_debug("still software rendering after 2 restarts, leaving it")
+    return r
 
 
 def health_check(api):
     """WebView2 偶尔会崩（窗口变空白/消失），检测到就自动重启自己。"""
     fails = 0
-    time.sleep(10)
-    for i in range(5):
-        if IS_WIN and hook_process_failed(api, last=(i == 4)):
-            break
-        time.sleep(3)
+    t0 = time.time()
+    if IS_WIN:  # 崩溃监听一就绪就挂上：开机时 GPU 进程常常在头几秒就出问题
+        while not ENGINE.stop.is_set() and not hook_process_failed(api, last=time.time() - t0 > 60):
+            if time.time() - t0 > 60:
+                break
+            time.sleep(1)
+    time.sleep(max(0.0, 15 - (time.time() - t0)))  # 开机时页面加载慢，留点时间再开始探测
+    gpu_check = IS_WIN and SETTINGS.get("webview_gpu", True)
+    renderer, next_gpu = None, 0
     while not ENGINE.stop.is_set():
-        res = [None]
-
-        def probe():
-            try:
-                res[0] = api._window.evaluate_js("1+1")
-            except Exception as e:  # noqa
-                res[0] = e
-        t = threading.Thread(target=probe, daemon=True)
-        t.start()
-        t.join(8)
-        ok = (not t.is_alive()) and res[0] == 2
+        ok, r = run_js(api, "1+1")
+        ok = ok and r == 2
         fails = 0 if ok else fails + 1
         if fails >= 2 and not ENGINE.stop.is_set():
-            restart_self(api, f"webview unresponsive ({res[0]!r})"[:200])
+            restart_self(api, f"webview unresponsive ({r!r})"[:200])
+        if ok and gpu_check and time.time() >= next_gpu:
+            # 刚启动的 5 分钟里每 20 秒查一次，之后每 5 分钟
+            next_gpu = time.time() + (20 if time.time() - t0 < 300 else 300)
+            renderer = check_renderer(api, renderer)
         time.sleep(5)
 
 
@@ -717,6 +871,7 @@ def main():
         # 软件渲染：不占显存，但会让 Win11 微软拼音候选栏消失，只建议在 GPU 进程频繁崩溃时手动关掉
         os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = (
             os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "") + " --disable-gpu").strip()
+    wait_for_desktop()
     import webview
     ui = load_ui()
     api = Api()

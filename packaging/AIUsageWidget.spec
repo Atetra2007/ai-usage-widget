@@ -13,7 +13,7 @@ a = Analysis(
     hiddenimports=[
         'paths', 'settings',
         'providers', 'providers.common', 'providers.claude', 'providers.codex',
-        'providers.local', 'providers.gpu',
+        'providers.local', 'providers.gpu', 'providers.lmctl',
         'webview.platforms.winforms', 'webview.platforms.edgechromium', 'clr',
     ],
     excludes=['tkinter', 'unittest', 'pydoc', 'test'],

@@ -14,6 +14,7 @@ Windows 桌面上的一条透明小胶囊，实时显示 **Claude**、**Codex** 
 ## 功能
 
 - **Claude / Codex 额度**：5 小时窗口和每周额度、重置倒计时、今日和累计 token。进度条上的细竖线表示按时间均匀消耗应在的位置，越过它说明用快了，还会预测什么时候用完。
+- **Codex 多账号**：在一台电脑上切换几个 Codex 账号时，每个号的额度分开显示（当前登录的号在上面，其他号列在下面），快用完时提示切到还有余量的号。
 - **本地模型**：生成时显示速度、空闲时归零，最近 90 秒速度曲线，MTP 接受率，显存占用，今日和累计 token。
 - **自动识别 + 手动勾选**：第一次启动自动检测你装了哪些工具，只显示勾选的项目；只勾一项时胶囊会显示更多细节。
 - **智能提醒**：快用完时，有本地模型就提示「简单任务交给本地」，同时有 Claude 和 Codex 就提示另一个还剩多少。
@@ -40,7 +41,7 @@ Windows 桌面上的一条透明小胶囊，实时显示 **Claude**、**Codex** 
 |---|---|
 | Claude 额度 | 安装 [Claude Code](https://docs.claude.com/en/docs/claude-code/setup)，用订阅账号（Pro / Max）登录一次。小组件读取它的登录凭证查询额度，之后不用 Claude Code 也行。 |
 | Claude 今日 token | 只统计 Claude Code 的用量（网页版 / 桌面版聊天的 token 本地没有记录；额度百分比不受影响，是所有入口共用的）。 |
-| Codex | 安装并登录 Codex（CLI 或 App），用过一次就会有会话记录。只有每周额度的套餐会显示为「每周额度」。 |
+| Codex | 安装并登录 Codex（CLI 或 App），用过一次就会有会话记录。只有每周额度的套餐会显示为「每周额度」。默认还会用 Codex 的登录信息查询实时额度（设置里「Codex 实时额度」可以关掉）。 |
 | 本地模型 | 用 [LM Studio Bionic](https://lmstudio.ai) 或 LM Studio 跑 GGUF 模型。其他 llama.cpp 服务器可在 `settings.json` 的 `local_log_dirs` 里加日志目录。 |
 | 显存 | NVIDIA 显卡（通过 `nvidia-smi`）。 |
 
@@ -58,12 +59,14 @@ Windows 桌面上的一条透明小胶囊，实时显示 **Claude**、**Codex** 
 - **本地模型速度后面写着「估算」**：读不到 llama.cpp 的 `/slots` 接口（Bionic 内置服务器需要密钥），生成中先显示最近几次的平均速度，每条回复结束后更新为真实速度。
 - **小组件不见了**：全屏玩游戏 / 看视频时会自动隐藏，退出全屏就回来。如果一直不出现，可能是程序退出了：重新打开它；反馈问题时请附上数据目录里的 `error.log`。
 - **杀毒软件或 SmartScreen 拦截**：exe 没有代码签名。可以用 Release 页面上的 SHA256 核对下载的文件，或者从源码运行。
+- **Codex 用了好几个账号**：小组件读 `~/.codex/auth.json` 认出当前登录的号，再用额度窗口的重置时间区分日志里各个号的记录，切号后也不会把两个号的额度混在一起。用 Cockpit Tools、cc-switch、codex-switch 这类切换工具时，会自动找它们保存的其他账号一起查询实时额度；找不到的话，其他号显示最后一次使用时的额度。工具把账号存在别的地方时，可以在 `settings.json` 的 `codex_auth_files` 里填文件或文件夹路径；`codex_labels` 可以给账号起名字，例如 `{"me@example.com": "主号"}`。
 - **端口 8765 被占用**：在 `settings.json` 里改 `http_port`，或把 `http_enabled` 设为 `false`。
 
 ## 隐私与说明
 
-- **所有数据都在你的电脑上。** 唯一的网络请求是向 Anthropic 查询 Claude 额度（`api.anthropic.com`）。没有任何统计上报。
-- Claude 额度用的是 Claude Code 内部使用的**非公开接口**，随时可能变化或失效。
+- **所有数据都在你的电脑上。** 网络请求只有两个：向 Anthropic 查询 Claude 额度（`api.anthropic.com`），向 OpenAI 查询 Codex 额度（`chatgpt.com`，Codex 的 `/status` 用的同一个接口）。没有任何统计上报。
+- Codex 额度查询只读取登录令牌，不会刷新或改写 `auth.json` 和切换工具里的任何文件，令牌也不会写进小组件的数据文件（`codex_accounts.json` 只存账号邮箱和额度）。不想联网查询可以在设置里关掉「Codex 实时额度」，只读本机会话日志；不想读取切换工具里的账号，把 `settings.json` 的 `codex_other_accounts` 设为 `false`。
+- Claude 和 Codex 的额度接口都是官方客户端内部使用的**非公开接口**，随时可能变化或失效。
 - 访问令牌过期时，小组件默认按 Claude Code 的方式刷新并写回 `~/.claude/.credentials.json`（写前会备份为 `.credentials.json.bak`）。极少数情况下和 Claude Code 同时刷新可能需要重新登录一次；不想要可以在设置里关掉，关掉后令牌过期时会提示你运行一次 `claude`。
 - 本地模型的逐字实时速度需要读取 llama.cpp 的 `/slots` 接口；Bionic 的内置服务器需要密钥，读不到时生成中显示的是最近几次的平均速度（标注「估算」），每条回复结束后用真实速度更新。
 - 本项目与 Anthropic、OpenAI、LM Studio 无关。

@@ -40,6 +40,7 @@ body.open .pi em{display:none}
 .dot{width:6px;height:6px;border-radius:50%;background:var(--ink3);flex:none}
 .dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
 .dot.live{background:var(--ok);animation:pulse 1.2s ease-in-out infinite}
+.dot.busy{background:var(--warn);animation:pulse 1.2s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.3}}
 .card{display:none;padding:0 18px 6px}
 body.open .card{display:block}
@@ -56,6 +57,17 @@ body.open.up .pill{border-bottom:0;border-top:1px solid var(--line)}
 .tr s{position:absolute;top:-3px;width:1.5px;height:9px;background:var(--ink3);border-radius:1px}
 .mt{font-size:11px;color:var(--ink3);display:flex;flex-wrap:wrap;justify-content:space-between;column-gap:8px;row-gap:1px;white-space:nowrap}
 .mt span:last-child{margin-left:auto}
+.nm em{font-style:normal;color:var(--ink3);font-size:11px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.oas{margin-top:3px}
+.oa{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink2);padding:3px 0 1px;white-space:nowrap}
+.oa .ol{overflow:hidden;text-overflow:ellipsis;max-width:96px}
+.oa b{font-weight:600;color:var(--ink)}
+.oa .om{margin-left:auto;color:var(--ink3);overflow:hidden;text-overflow:ellipsis}
+.ctl{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:7px;font-size:11px;color:var(--ink2);min-height:20px}
+.ctl span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ctl.err span{color:var(--bad)}
+.ctl button{color:var(--ink);background:var(--hover);padding:2px 12px;flex:none}
+.ctl button:disabled{opacity:.45;cursor:default}
 svg.sp{display:block;width:100%;height:26px;margin:7px 0 4px;overflow:visible}
 .alert{margin-top:10px;padding-top:8px;border-top:1px solid var(--line);font-size:11px;color:var(--warn)}
 .alert.bad{color:var(--bad)}
@@ -107,14 +119,16 @@ a{color:var(--ink2);text-decoration:underline;text-underline-offset:2px;cursor:p
         <div class="mt"><span id="cM1"></span><span id="cM2"></span></div>
       </div>
       <div class="sec" id="sX">
-        <div class="top"><span class="nm">Codex</span><span class="big" id="xV">—</span></div>
+        <div class="top"><span class="nm">Codex<em id="xA"></em></span><span class="big" id="xV">—</span></div>
         <div class="tr"><i id="xB"></i><s id="xP" class="hide"></s></div>
         <div class="mt"><span id="xM1"></span><span id="xM2"></span></div>
+        <div class="oas hide" id="xO"></div>
       </div>
       <div class="sec" id="sL">
         <div class="top"><span class="nm"><span class="dot" id="lD"></span><span id="lN"></span></span><span class="big" id="lV">—</span></div>
         <svg class="sp" viewBox="0 0 264 26" preserveAspectRatio="none"><polygon id="lA" fill="var(--ok)" fill-opacity=".12" points=""/><polyline id="lS" fill="none" stroke="var(--ok)" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" points=""/></svg>
         <div class="mt"><span id="lM1"></span><span id="lM2"></span></div>
+        <div class="ctl hide" id="lC"><span id="lCs"></span><button id="lCb"></button></div>
       </div>
       <div class="empty hide" id="empty"><span data-t="empty"></span> <a id="emptyGo" data-t="open_settings"></a></div>
       <div class="alert hide" id="al"></div>
@@ -125,6 +139,7 @@ a{color:var(--ink2);text-decoration:underline;text-underline-offset:2px;cursor:p
       <h4 data-t="options"></h4>
       <div class="opt"><span data-t="opt_style"></span><span class="seg" id="seg"><button data-s="smoke" data-t="st_smoke"></button><button data-s="frost" data-t="st_frost"></button><button data-s="clear" data-t="st_clear"></button></span></div>
       <div class="opt"><span data-t="opt_refresh"></span><span class="sw" id="oRefresh"></span></div>
+      <div class="opt"><span data-t="opt_codex_live"></span><span class="sw" id="oCodex"></span></div>
       <div class="opt"><span data-t="opt_autostart"></span><span class="sw" id="oAuto"></span></div>
       <div class="opt"><span data-t="opt_fullscreen"></span><span class="sw" id="oFull"></span></div>
       <div class="opt"><span data-t="opt_margin"></span><span class="step"><button id="mMinus">−</button><span id="mVal"></span><button id="mPlus">+</button></span></div>
@@ -141,7 +156,7 @@ a{color:var(--ink2);text-decoration:underline;text-underline-offset:2px;cursor:p
 const $=id=>document.getElementById(id);
 const I18N={
 zh:{setup_hint:'点这里设置',empty:'还没有选择要显示的内容。',open_settings:'打开设置',show_what:'显示内容',options:'选项',
- opt_refresh:'Claude 令牌过期时自动刷新',opt_autostart:'开机自启',opt_fullscreen:'全屏程序时自动隐藏',opt_margin:'吸附时离屏幕边缘',opt_lang:'语言',opt_style:'样式',lang_auto:'跟随系统',
+ opt_refresh:'Claude 令牌过期时自动刷新',opt_codex_live:'Codex 实时额度（含其他账号）',opt_autostart:'开机自启',opt_fullscreen:'全屏程序时自动隐藏',opt_margin:'吸附时离屏幕边缘',opt_lang:'语言',opt_style:'样式',lang_auto:'跟随系统',
  done:'完成',settings:'设置',back:'返回',pin:'固定',unpin:'取消',refresh:'刷新',quit:'退出',st_smoke:'烟灰',st_frost:'白雾',st_clear:'悬浮',
  local_model:'本地模型',src_claude:'Claude 额度',src_codex:'Codex 额度',src_local:'本地模型速度与用量',src_gpu:'显卡显存',
  d_claude_ok:'已检测到 Claude Code 登录',d_claude_no_login:'已安装 Claude Code 但未登录：在终端运行 claude 登录一次',d_claude_missing:'未检测到。需要安装 Claude Code 并用订阅账号登录',
@@ -149,13 +164,18 @@ zh:{setup_hint:'点这里设置',empty:'还没有选择要显示的内容。',op
  d_local_ok:'已检测到：{0}',d_local_missing:'未检测到 Bionic / LM Studio 日志',d_gpu_ok:'已检测到 NVIDIA 显卡',d_gpu_missing:'未检测到 nvidia-smi（仅支持 N 卡）',
  how_install:'安装说明',new_badge:'新',data_dir:'数据目录',
  tip_popup:'弹窗模式：悬停展开（点一下切到胶囊模式）',tip_pill:'胶囊模式：只显示胶囊，方便拖动（点一下切到弹窗模式）',tip_today:'本地模型今日 token',
- reset_in:'{0} 后重置',window_reset:'窗口已重置',weekly:'本周 {0}%',week_only:'每周额度',today_total:'今日 {0} · 累计 {1}',today_short:'今日 {0}',loading:'读取中',no_data:'暂无数据',
+ reset_in:'{0} 后重置',window_reset:'窗口已重置',weekly:'本周 {0}%',week_only:'每周额度',today_total:'今日 {0} · 累计 {1}',today_short:'今日 {0}',today_q:'今日 {0}',q_week:'周额度 +{0}%',q_five:'5h 额度 +{0}%',tip_quota:'网页版、Cowork、手机端的 Claude 不在本机留日志，官方接口也只给百分比，没法得到准确 token 数，所以这里显示今天用掉了多少额度（从小组件开始运行起统计）。本机 Claude Code 的 token 会显示在前面。',loading:'读取中',no_data:'暂无数据',
+ acc_other:'其他账号',acc_live:'实时',acc_log:'最后使用 {0}',acc_expired:'登录已过期，显示的是最后一次的额度',
+ ex_token_expired:'Codex 登录已过期 · 打开 Codex 用一次',ex_network:'网络错误，稍后重试',ex_http:'额度接口 HTTP {0}',
+ a_switch:'{0} 快用完了，{1} 还剩 {2}%，可以切过去',
  e_not_logged_in:'未登录 Claude Code',e_token_expired:'令牌已过期 · 运行一次 claude 刷新',e_refresh_failed:'令牌刷新失败 · 运行一次 claude 重新登录',e_network:'网络错误，稍后重试',e_http:'额度接口 HTTP {0}',
+ lm_unloaded:'模型已卸载',lm_loading:'加载中 {0}',lm_unloading:'卸载中…',lm_loaded:'已加载',lm_took:'用时 {0} 秒',lm_other:'已加载：{0}',lm_load:'加载',lm_unload:'卸载',lm_err:'失败：{0}',
+ le_no_model:'LM Studio 里没找到 Flash-Next',le_server_down:'LM Studio 服务启动失败',le_no_lms:'找不到 lms 命令',le_auth:'LM Studio 开启了 API 鉴权',
  generating:'生成中',estimated:'生成中 · 估算',idle:'空闲',not_loaded:'未加载',no_logs:'没找到本地模型日志',vram:'显存 {0}/{1}G',
  a_out_local:'{0} 快用完了，简单任务交给本地',a_out_other:'{0} 快用完了，{1} 还剩 {2}%',a_out:'{0} 5 小时额度快用完了',a_fast:'{0} 偏快，预计 {1} 用完',a_week:'{0} 本周额度已用 {1}%',a_vram:'显存快满了，可能溢出变慢',
  m:'{0}分钟',wk:['周日','周一','周二','周三','周四','周五','周六']},
 en:{setup_hint:'Click to set up',empty:'Nothing selected to show yet.',open_settings:'Open settings',show_what:'Show',options:'Options',
- opt_refresh:'Auto-refresh expired Claude token',opt_autostart:'Start with Windows',opt_fullscreen:'Hide over fullscreen apps',opt_margin:'Snap margin',opt_lang:'Language',opt_style:'Style',lang_auto:'System',
+ opt_refresh:'Auto-refresh expired Claude token',opt_codex_live:'Live Codex usage (all accounts)',opt_autostart:'Start with Windows',opt_fullscreen:'Hide over fullscreen apps',opt_margin:'Snap margin',opt_lang:'Language',opt_style:'Style',lang_auto:'System',
  done:'Done',settings:'Settings',back:'Back',pin:'Pin',unpin:'Unpin',refresh:'Refresh',quit:'Quit',st_smoke:'Smoke',st_frost:'Frost',st_clear:'Clear',
  local_model:'Local model',src_claude:'Claude usage',src_codex:'Codex usage',src_local:'Local model speed & tokens',src_gpu:'GPU memory',
  d_claude_ok:'Claude Code login found',d_claude_no_login:'Claude Code installed but not logged in — run claude once',d_claude_missing:'Not found. Install Claude Code and log in with your subscription',
@@ -163,8 +183,13 @@ en:{setup_hint:'Click to set up',empty:'Nothing selected to show yet.',open_sett
  d_local_ok:'Found: {0}',d_local_missing:'No Bionic / LM Studio logs found',d_gpu_ok:'NVIDIA GPU found',d_gpu_missing:'nvidia-smi not found (NVIDIA only)',
  how_install:'How to install',new_badge:'new',data_dir:'Data folder',
  tip_popup:'Popup mode: expands on hover (click for pill mode)',tip_pill:'Pill mode: stays compact for easy dragging (click for popup mode)',tip_today:'Local model tokens today',
- reset_in:'resets in {0}',window_reset:'window reset',weekly:'week {0}%',week_only:'weekly limit',today_total:'today {0} · total {1}',today_short:'today {0}',loading:'loading',no_data:'no data',
+ reset_in:'resets in {0}',window_reset:'window reset',weekly:'week {0}%',week_only:'weekly limit',today_total:'today {0} · total {1}',today_short:'today {0}',today_q:'today {0}',q_week:'+{0}% of week',q_five:'+{0}% of 5h',tip_quota:'Claude on the web, in Cowork and on mobile leaves no local logs, and the usage API only reports percentages, so exact token counts are not available. This shows how much of your limit you used today (counted while the widget is running). Local Claude Code tokens are shown in front when present.',loading:'loading',no_data:'no data',
+ acc_other:'Other account',acc_live:'live',acc_log:'last used {0}',acc_expired:'login expired, showing the last known usage',
+ ex_token_expired:'Codex login expired · open Codex once',ex_network:'network error, retrying',ex_http:'usage API HTTP {0}',
+ a_switch:'{0} is almost out — {1} has {2}% left, switch to it',
  e_not_logged_in:'Claude Code not logged in',e_token_expired:'token expired · run claude once',e_refresh_failed:'token refresh failed · run claude to log in',e_network:'network error, retrying',e_http:'usage API HTTP {0}',
+ lm_unloaded:'model unloaded',lm_loading:'loading {0}',lm_unloading:'unloading…',lm_loaded:'loaded',lm_took:'took {0}s',lm_other:'loaded: {0}',lm_load:'Load',lm_unload:'Unload',lm_err:'failed: {0}',
+ le_no_model:'Flash-Next not found in LM Studio',le_server_down:'LM Studio server did not start',le_no_lms:'lms command not found',le_auth:'LM Studio API auth is on',
  generating:'generating',estimated:'generating · est.',idle:'idle',not_loaded:'not loaded',no_logs:'no local model logs found',vram:'VRAM {0}/{1}G',
  a_out_local:'{0} is almost out — use the local model for simple tasks',a_out_other:'{0} is almost out — {1} has {2}% left',a_out:'{0} 5-hour limit almost used up',a_fast:'{0} is burning fast — out by {1}',a_week:'{0} weekly usage at {1}%',a_vram:'VRAM almost full — may slow down',
  m:'{0}m',wk:['Sun','Mon','Tue','Wed','Thu','Fri','Sat']}};
@@ -178,7 +203,7 @@ const fmt=n=>{n=+n||0;if(n>=1e9)return(n/1e9).toFixed(2)+'B';if(n>=1e6)return(n/
 const p2=n=>String(n).padStart(2,'0');
 function until(ts){const s=ts-Date.now()/1000;if(s<=0)return t('window_reset');const m=Math.round(s/60);if(m<60)return t('m',m);const h=Math.floor(m/60);if(h<24)return h+'h'+p2(m%60)+'m';const d=new Date(ts*1000);return t('wk')[d.getDay()]+' '+p2(d.getHours())+':'+p2(d.getMinutes())}
 const hm=ts=>{const d=new Date(ts*1000);return p2(d.getHours())+':'+p2(d.getMinutes())};
-function errText(e){if(!e)return'';if(e.startsWith('http_'))return t('e_http',e.slice(5));return t('e_'+e)}
+function errText(e,key){if(!e)return'';const p=key==='codex'?'ex_':'e_';if(e.startsWith('http_'))return t(p+'http',e.slice(5));return t(p+e)}
 const NAMES={claude:'Claude',codex:'Codex'};
 async function api(name,...a){try{if(window.pywebview&&pywebview.api&&pywebview.api[name])return await pywebview.api[name](...a)}catch(e){}return null}
 function level(w,st){if(!w)return'';if(w.used>=st.danger)return'bad';if(w.used>=st.warn||(w.ahead&&w.eta))return'warn';return''}
@@ -190,10 +215,31 @@ function quota(p,key,st){
     if(w.pace!=null){P.classList.remove('hide');P.style.left='calc('+w.pace+'% - 1px)'}else P.classList.add('hide');
     $(p+'M1').textContent=(wkOnly?t('week_only')+' · ':'')+(w.reset_passed?t('window_reset'):t('reset_in',until(w.resets_at)))+(wk?' · '+t('weekly',Math.round(wk.used)):'')}
   else{V.textContent='—';B.style.width='0';P.classList.add('hide');
-    $(p+'M1').textContent=d&&d.error?errText(d.error):(d&&key==='codex'&&d.ok===false?t('no_data'):t('loading'))}
-  $(p+'M2').textContent=d?t('today_total',fmt(d.today),fmt(d.total)):'';
+    $(p+'M1').textContent=d&&d.error?errText(d.error,key):(d&&key==='codex'&&(d.ok===false||d.account)?t('no_data'):t('loading'))}
+  const M2=$(p+'M2'),qt=d&&d.quota_today;
+  if(qt){const pc=v=>String(+(+v).toFixed(1)),q=(d.weekly||!d.five_hour)?t('q_week',pc(qt.weekly)):t('q_five',pc(qt.five_hour));
+    M2.textContent=d.today>0?t('today_short',fmt(d.today))+' · '+q:t('today_q',q);M2.title=t('tip_quota')}
+  else{M2.textContent=d?t('today_total',fmt(d.today),fmt(d.total)):'';M2.title=''}
   return {w,wk,wkOnly,lv,txt:w?Math.round(w.used)+'%':'—'};
 }
+// Codex 多账号：标题旁显示当前号，下面列出其他号；返回额度最充足的其他号（用来提示切号）
+function accounts(st){
+  const d=st.codex||{},list=d.accounts||[],multi=list.length>1,box=$('xO');
+  $('xA').textContent=multi&&d.account?'· '+d.account:'';$('xA').title=multi&&list[0]&&list[0].plan?list[0].plan:'';
+  $('pX').title=multi&&d.account?'Codex · '+d.account:'';
+  const others=list.filter(e=>!e.current);let best=null,n=0;
+  box.classList.toggle('hide',!multi||!others.length);
+  box.innerHTML=multi?others.map(e=>{
+    let w=e.five_hour,wk=e.weekly;const wkOnly=!w&&!!wk;if(wkOnly){w=wk;wk=null}
+    const name=e.label||(t('acc_other')+(others.filter(x=>!x.label).length>1?' '+(++n):''));
+    const used=Math.max(...[e.five_hour,e.weekly].filter(Boolean).map(x=>x.used),0);
+    if((e.five_hour||e.weekly)&&used<st.warn&&(!best||100-used>best.left))best={label:name,left:Math.round(100-used)};
+    const tip=[e.plan,e.src==='api'&&e.live&&!e.error?t('acc_live'):(e.updated?t('acc_log',ago(e.updated)):''),e.error==='token_expired'?t('acc_expired'):''].filter(Boolean).join(' · ');
+    const meta=w?(wkOnly?t('week_only')+' · ':'')+(w.reset_passed?t('window_reset'):t('reset_in',until(w.resets_at)))+(wk?' · '+t('weekly',Math.round(wk.used)):''):t('no_data');
+    return '<div class="oa" title="'+esc(tip)+'"><span class="dot '+(w?(level(w,st)||'ok'):'')+'"></span><span class="ol">'+esc(name)+'</span><b>'+(w?Math.round(w.used)+'%':'—')+'</b><span class="om">'+meta+'</span></div>'}).join(''):'';
+  return best}
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function ago(ts){const d=new Date(ts*1000),n=new Date();return (d.toDateString()===n.toDateString()?'':(d.getMonth()+1)+'-'+d.getDate()+' ')+hm(ts)}
 function spark(arr){
   if(!arr||arr.length<2){$('lS').setAttribute('points','');$('lA').setAttribute('points','');return}
   const mx=Math.max(60,...arr)*1.1,step=264/(arr.length-1);
@@ -215,19 +261,25 @@ function render(st){
     $(pp+'V').textContent=q.txt;$(pp+'D').className='dot '+(q.lv||(q.w?'ok':''));
     $(pp+'E').textContent=single&&q.w?(q.wk?t('weekly',Math.round(q.wk.used))+' · ':'')+until(q.w.resets_at):'';
   }
+  const alt=en.codex?accounts(st):null;
   for(const k of ['claude','codex']){const q=Q[k];if(!q||!q.w)continue;const w=q.w,nm=NAMES[k],other=k==='claude'?'codex':'claude',o=Q[other];
-    if(w.used>=st.danger){if(en.local)alerts.push(['bad',t('a_out_local',nm)]);
+    if(w.used>=st.danger){if(k==='codex'&&alt)alerts.push(['bad',t('a_switch',nm+(st.codex.account?' '+st.codex.account:''),alt.label,alt.left)]);
+      else if(en.local)alerts.push(['bad',t('a_out_local',nm)]);
       else if(o&&o.w&&o.w.used<st.warn)alerts.push(['bad',t('a_out_other',nm,NAMES[other],Math.round(100-o.w.used))]);
       else alerts.push(['bad',q.wkOnly?t('a_week',nm,Math.round(w.used)):t('a_out',nm)])}
     else if(w.eta)alerts.push(['warn',t('a_fast',nm,hm(w.eta))]);
     if(q.wk&&q.wk.used>=st.danger)alerts.push(['bad',t('a_week',nm,Math.round(q.wk.used))]);}
-  if(en.local){const L=st.local||{};const gen=!!L.generating,sp=gen?(L.speed||0):0;
+  if(en.local){const L=st.local||{};const gen=!!L.generating,sp=gen?(L.speed||0):0;const C=st.lmctl,cs=C&&C.state;
+    const busy=cs==='loading'||cs==='unloading',up=C?(cs==='loaded'||cs==='other'):L.loaded;
     $('lN').textContent=prettyModel(L.model);
-    $('lD').className='dot '+(gen?'live':(L.loaded?'ok':''));$('plD').className=$('lD').className;
+    $('lD').className='dot '+(gen?'live':busy?'busy':(up?'ok':''));$('plD').className=$('lD').className;
+    lmCtl(C);
     $('lV').innerHTML=(L.ok?Math.round(sp):'—')+'<small>tok/s</small>';$('plV').textContent=L.ok?Math.round(sp):'—';
     $('plT').textContent=L.ok?(single?t('today_short',fmt(L.today))+(L.model?' · '+prettyModel(L.model):''):fmt(L.today)):'';
     spark(L.timeline);
-    const left=[];if(!L.ok)left.push(t('no_logs'));else if(!L.loaded)left.push(t('not_loaded'));else left.push(gen?(L.estimated?t('estimated'):t('generating')):t('idle'));
+    const left=[];
+    if(C){if(gen)left.push(L.estimated?t('estimated'):t('generating'));else if(up)left.push(t('idle'))}
+    else if(!L.ok)left.push(t('no_logs'));else if(!L.loaded)left.push(t('not_loaded'));else left.push(gen?(L.estimated?t('estimated'):t('generating')):t('idle'));
     if(L.last&&L.last.draft!=null)left.push('MTP '+L.last.draft+'%');
     if(L.gpu){left.push(t('vram',(+L.gpu.used).toFixed(1),(+L.gpu.total).toFixed(1)));if(L.gpu.used>=L.gpu.total-0.6)alerts.push(['bad',t('a_vram')])}
     $('lM1').textContent=left.join(' · ');$('lM2').textContent=t('today_total',fmt(L.today),fmt(L.total))}
@@ -236,6 +288,26 @@ function render(st){
   al.innerHTML=alerts.map(a=>'<div>'+a[1]+'</div>').join('');
   updSetBtn();fit();
 }
+const mmss=s=>{s=Math.max(0,Math.round(+s||0));return Math.floor(s/60)+':'+p2(s%60)};
+const short=k=>String(k||'').split('/').pop().replace(/-gguf$/i,'');
+function lmCtl(C){
+  const box=$('lC');box.classList.toggle('hide',!C);if(!C)return;
+  const s=C.state,b=$('lCb');let txt;
+  if(s==='loading')txt=t('lm_loading',mmss(C.elapsed));
+  else if(s==='unloading')txt=t('lm_unloading');
+  else if(s==='loaded')txt=t('lm_loaded')+(C.last_load?' · '+t('lm_took',Math.round(C.last_load)):'');
+  else if(s==='other')txt=t('lm_other',(C.loaded||[]).map(short).join(', '));
+  else txt=t('lm_unloaded');
+  const err=C.error&&s!=='loading'&&s!=='unloading';
+  if(err){const k='le_'+C.error;txt=t('lm_err',(I18N[LANG]||I18N.zh)[k]?t(k):C.error)}
+  box.classList.toggle('err',!!err);$('lCs').textContent=txt;$('lCs').title=txt;
+  b.disabled=s==='loading'||s==='unloading';
+  b.textContent=(s==='loaded'||s==='other'||s==='unloading')?t('lm_unload'):t('lm_load');
+}
+$('lCb').onclick=async()=>{const C=S&&S.lmctl;if(!C||C.state==='loading'||C.state==='unloading')return;
+  const unload=C.state==='loaded'||C.state==='other';
+  C.state=unload?'unloading':'loading';C.elapsed=0;C.error=null;render(S);
+  const r=await api(unload?'local_unload':'local_load');if(r&&S){S.lmctl=r;render(S)}};
 const SRC=[['claude','src_claude'],['codex','src_codex'],['local','src_local'],['gpu','src_gpu']];
 function detText(k,d){d=d||{status:'missing'};if(k==='local'&&d.status==='ok')return t('d_local_ok',(d.sources||[]).map(x=>x.name).join(' / '));return t('d_'+k+'_'+d.status)}
 function renderSet(){
@@ -246,7 +318,7 @@ function renderSet(){
     return '<div class="row'+(src[k]?' on':'')+(k==='gpu'?' sub':'')+'" data-k="'+k+'"><span class="ck"></span><span class="rt"><b>'+t(lab)+'</b>'+nb+'<p class="'+(ok?'okt':'')+'">'+detText(k,d)+link+'</p></span></div>'}).join('');
   $('srcRows').querySelectorAll('.row').forEach(r=>r.onclick=e=>{if(e.target.dataset.url){api('open_url',e.target.dataset.url);return}
     saveSet({sources:{[r.dataset.k]:!r.classList.contains('on')}})});
-  $('oRefresh').classList.toggle('on',!!st.claude_refresh);$('oFull').classList.toggle('on',!!st.hide_on_fullscreen);$('oAuto').classList.toggle('on',!!D.autostart);
+  $('oRefresh').classList.toggle('on',!!st.claude_refresh);$('oCodex').classList.toggle('on',st.codex_live!==false);$('oFull').classList.toggle('on',!!st.hide_on_fullscreen);$('oAuto').classList.toggle('on',!!D.autostart);
   $('mVal').textContent=(st.snap_margin??8)+'px';
   document.querySelectorAll('#langSeg button').forEach(b=>b.classList.toggle('on',b.dataset.l===(st.lang||'auto')));
   $('dataDir').textContent=t('data_dir')+' · v'+(D.version||'');
@@ -267,6 +339,7 @@ $('pN').addEventListener('mousedown',e=>e.stopPropagation());
 $('pN').onclick=openSettings;
 $('bDone').onclick=()=>{closeSet();pinned=false;updPin();if(!hover)setOpen(false)};
 $('oRefresh').onclick=()=>saveSet({claude_refresh:!$('oRefresh').classList.contains('on')});
+$('oCodex').onclick=()=>saveSet({codex_live:!$('oCodex').classList.contains('on')});
 $('oFull').onclick=()=>saveSet({hide_on_fullscreen:!$('oFull').classList.contains('on')});
 $('oAuto').onclick=async()=>{const want=!$('oAuto').classList.contains('on');$('oAuto').classList.toggle('on',want);const r=await api('set_autostart',want);if(SETDATA){SETDATA.autostart=!!r;renderSet()}};
 $('mMinus').onclick=()=>saveSet({snap_margin:Math.max(0,((SETDATA&&SETDATA.settings.snap_margin)??8)-2)});
@@ -299,11 +372,17 @@ async function pull(){
     else if(window.MOCK)render(window.MOCK);
     else{const r=await fetch('http://127.0.0.1:8765/status.json');render(await r.json())}}catch(e){}
 }
+// 给 Python 端检查 WebView2 是不是掉到了软件渲染（软件渲染时透明可能失效）
+window.__gpu=()=>{try{const g=document.createElement('canvas').getContext('webgl');if(!g)return'none';
+  const e=g.getExtension('WEBGL_debug_renderer_info'),r=String(g.getParameter(e?e.UNMASKED_RENDERER_WEBGL:g.RENDERER));
+  const l=g.getExtension('WEBGL_lose_context');if(l)l.loseContext();return r}catch(e){return'err '+e}};
 const q=new URLSearchParams(location.search);
 setLang(q.get('lang')||'auto');setStyle(q.get('style')||'smoke',false);
 if(q.get('open'))setOpen(true);
 setInterval(pull,1000);
-window.addEventListener('pywebviewready',async()=>{const i=await api('init');
+// 开机时 Python 那边可能还很忙，init 偶尔拿不到；拿不到就重试，否则会一直停在默认样式
+window.addEventListener('pywebviewready',async()=>{let i=null;
+  for(let n=0;n<30&&!i;n++){i=await api('init');if(!i)await new Promise(r=>setTimeout(r,1000))}
   if(i){setStyle(i.style||'smoke',false);setMode(i.mode||'popup',false);setLang(i.lang||'auto');document.body.classList.toggle('up',!!i.up);
     if(i.first_run)openSettings()}
   pull();setTimeout(()=>api('snap'),1500)});

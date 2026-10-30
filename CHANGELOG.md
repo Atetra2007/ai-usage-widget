@@ -3,6 +3,19 @@
 每个版本的说明会自动出现在 GitHub Release 页面上。
 Each section below becomes the notes of the matching GitHub release.
 
+## 未发布 · Unreleased
+
+- Codex 支持多个账号：以前切换账号后，小组件只取日志里最新的一条额度，两个号的数据会互相覆盖、来回跳。现在读 `auth.json` 认出当前登录的号，用额度窗口的重置时间区分各个号的记录（切号前开的会话还在跑也不会算错），每个号分开显示，当前号快用完时提示切到还有余量的号。
+- Codex 额度改为实时查询（和 Codex `/status` 同一个接口，只读，不刷新令牌）：切号后马上显示新号的额度，不用等它发一次请求。会自动找 Cockpit Tools、cc-switch、codex-switch 等切换工具保存的其他账号一起查询；也可以在 `settings.json` 的 `codex_auth_files` 里指定位置，`codex_labels` 给账号起名。设置里「Codex 实时额度」可以关掉。
+- Multiple Codex accounts: switching accounts used to make the widget jump between them, because it only took the newest limit entry from the logs. It now reads `auth.json` to know the signed-in account, tells accounts apart by their limit reset times (even when a session started before the switch is still running), shows each account separately, and suggests switching when the current one is almost out.
+- Codex usage is now queried live (the same read-only endpoint as Codex's `/status`; tokens are never refreshed), so a newly signed-in account shows its usage right away. Accounts saved by switchers such as Cockpit Tools, cc-switch or codex-switch are found and queried too; set `codex_auth_files` in `settings.json` if yours stores them elsewhere, and name accounts with `codex_labels`. Turn it off with "Live Codex usage" in settings.
+- Claude 新增「今日用掉的额度」：网页版、Cowork、手机端的 Claude 不在本机留日志，官方接口也只给百分比，所以按额度百分比的增量统计今天用了周额度的多少（例如「今日 周额度 +8%」）。本机 Claude Code 的 token 照常显示。
+- 也会读取 Claude 桌面版在本机运行的会话日志。
+- Claude now shows how much of your limit you used today (e.g. `today +8% of week`). Claude on the web, in Cowork and on mobile leaves no local logs and the usage API only reports percentages, so this is tracked from the quota changes. Local Claude Code tokens are still shown.
+- Also reads session logs from Claude desktop sessions that run on this PC.
+- 修复开机自启后小组件有时变成不透明、要退出重开才正常的问题：登录后先等桌面和显卡稳定（默认 40 秒，`settings.json` 里的 `boot_delay` 可改）再显示窗口；显示器 / 显卡驱动重置后自动重新应用透明；WebView2 掉到软件渲染时自动重启（最多连续 2 次）。
+- Fixed the widget sometimes turning opaque after starting with Windows until it was reopened: it now waits for the desktop and GPU to settle after login (40 s by default, `boot_delay` in `settings.json`), re-applies transparency after display or driver resets, and restarts itself if WebView2 falls back to software rendering (at most twice in a row).
+
 ## v1.0.3 — 2026-10-28
 
 **改进**

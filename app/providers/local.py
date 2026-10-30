@@ -17,6 +17,8 @@ RE_PORT = re.compile(r"listening on http://127\.0\.0\.1:(\d+)")
 RE_PROMPT = re.compile(r"prompt eval time =\s*([\d.]+) ms /\s*(\d+) tokens")
 RE_EVAL = re.compile(r"\|\s+eval time =\s*([\d.]+) ms /\s*(\d+) tokens.*?([\d.]+) tokens per second")
 RE_DRAFT = re.compile(r"draft acceptance = ([\d.]+)")
+# 新版 llama-server 生成中每 3 秒打一行：n_gen = 7464, tg = 34.66 t/s, tg_3s = 35.13 t/s
+RE_TG = re.compile(r"n_gen =\s*(\d+), tg =\s*([\d.]+) t/s, tg_3s =\s*([\d.]+) t/s")
 
 
 def default_dirs():
@@ -64,6 +66,7 @@ class LocalCollector:
         self.is_gen = False
         self.cur = 0.0
         self.estimated = False
+        self.log_live = None  # (时间, 最近 3 秒速度, 已生成 token)：/slots 不可用时用日志里的实时速度
         from collections import deque
         self.timeline = deque([0.0] * 90, maxlen=90)  # 最近 90 秒的速度
         self._last_full = 0
@@ -117,6 +120,11 @@ class LocalCollector:
                                  "ts": self.ts, "draft": None}
                     self.speeds = (self.speeds + [round(spd, 1)])[-40:]
                 self.pending_prompt = 0
+        elif "tg_3s" in line and live:
+            m = RE_TG.search(line)
+            if m:
+                self.generating = True
+                self.log_live = (now(), float(m.group(3)), int(m.group(1)))
         elif "draft acceptance" in line and live and self.last:
             m = RE_DRAFT.search(line)
             if m:
@@ -124,6 +132,7 @@ class LocalCollector:
         elif ("stop processing" in line or "release:" in line) and live:
             self.generating = False
             self.live = None
+            self.log_live = None
         elif "Server stopped" in line and live:
             self.loaded = False
             self.generating = False
@@ -240,6 +249,8 @@ class LocalCollector:
             gen = self.slot_busy
             cur = self.live or 0.0
             self.estimated = False
+        elif self.generating and self.log_live and t - self.log_live[0] < 8:
+            gen, cur, self.estimated = True, self.log_live[1], False  # 日志里的实时速度（LM Studio 的 /slots 需要密钥）
         else:
             gen = self.generating
             cur = self._estimate() if gen else 0.0
@@ -255,7 +266,9 @@ class LocalCollector:
     def build(self, gpu=None):
         td, tt = self.history.totals("local")
         to, _ = self.history.totals("local", "output")
-        live_out = self.slot_decoded if self.is_gen else 0  # 正在生成的这条也算进今日
+        live_out = self.slot_decoded if self.is_gen else 0
+        if self.is_gen and not live_out and self.log_live:
+            live_out = self.log_live[2]  # 正在生成的这条也算进今日
         return {"ok": bool(self.cur_file), "model": self.model, "ctx": self.ctx, "loaded": self.loaded,
                 "generating": self.is_gen, "speed": self.cur, "estimated": self.estimated,
                 "last": self.last, "timeline": list(self.timeline),

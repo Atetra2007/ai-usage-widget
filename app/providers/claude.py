@@ -174,6 +174,10 @@ class ClaudeCollector:
             self.usage = self._parse_usage(data)
             self.plan = plan
             self.usage_ts = now()
+            try:
+                self._track_quota()
+            except Exception:
+                pass
             self.error = None
             self.backoff = self.poll
             self.next_poll = now() + self.poll
@@ -187,6 +191,42 @@ class ClaudeCollector:
         except Exception as e:  # noqa
             self.error = "refresh_failed" if "refresh_failed" in str(e) else "network"
             self.next_poll = now() + self.poll
+
+    # ---- 云端用量（Cowork / claude.ai / 手机 App）不会在本机留日志，接口也只给百分比：
+    #      用额度百分比的增量累计出「今天用了多少额度」，单位是 0.1%。
+    def _track_quota(self):
+        path = os.path.join(self.data_dir, "claude_quota_state.json")
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                state = json.load(f)
+        except Exception:
+            state = {}
+        add = {}
+        for name, field in (("five_hour", "five10"), ("weekly", "week10")):
+            cur = (self.usage or {}).get(name)
+            if not cur or cur[0] is None:
+                continue
+            used, resets, _ = cur
+            key = int(round((resets or 0) / 60))  # 同一个窗口每次返回的 resets_at 只差几毫秒
+            prev = state.get(name)
+            if prev is None:
+                delta = 0  # 第一次只记基线
+            elif abs(int(prev.get("key", 0)) - key) <= 1:
+                delta = used - float(prev.get("used", 0))  # 同一窗口：增量（偶尔回落就当 0）
+            else:
+                delta = used  # 窗口已重置：新窗口里用掉的全算今天
+            if delta > 0:
+                add[field] = int(round(delta * 10))
+            state[name] = {"key": key, "used": used}
+        state["ts"] = now()
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(state, f)
+        os.replace(tmp, path)
+        if add:
+            self.history.add("claude_quota", today(), add)
+        elif not self.history.day("claude_quota"):
+            self.history.add("claude_quota", today(), {"week10": 0, "five10": 0})  # 标记今天已在统计
 
     # ---- Claude Code 本地 token
     @staticmethod
@@ -215,6 +255,14 @@ class ClaudeCollector:
 
     def scan_tokens(self):
         files = glob.glob(os.path.join(self.dir, "projects", "**", "*.jsonl"), recursive=True)
+        appdata = os.environ.get("APPDATA")
+        if appdata:  # Claude 桌面版在本机运行的会话（Code / 本地 Cowork）各自带一个 .claude 目录
+            files += glob.glob(os.path.join(appdata, "Claude", "local-agent-mode-sessions", "**",
+                                            "projects", "**", "*.jsonl"), recursive=True)
+            files += glob.glob(os.path.join(appdata, "Claude", "claude-code-sessions", "**",
+                                            "projects", "**", "*.jsonl"), recursive=True)
+        files = sorted(set(files))
+        self.log_files = len(files)
         seen = {}
         for fp in files:
             try:
@@ -240,7 +288,11 @@ class ClaudeCollector:
         td, tt = self.history.totals("claude")
         st = {"ok": self.usage is not None, "logged_in": os.path.exists(self.cred_path),
               "error": self.error, "today": td, "total": tt, "updated": self.usage_ts,
-              "five_hour": None, "weekly": None, "week": self.history.last_days("claude")}
+              "five_hour": None, "weekly": None, "week": self.history.last_days("claude"),
+              "log_files": getattr(self, "log_files", None)}
+        q = self.history.day("claude_quota")
+        st["quota_today"] = ({"weekly": q.get("week10", 0) / 10, "five_hour": q.get("five10", 0) / 10}
+                             if q else None)
         if self.usage:
             for name in ("five_hour", "weekly"):
                 if name in self.usage:
