@@ -7,7 +7,7 @@
 
 English | [中文](README.md) · [Download the latest version](https://github.com/Atetra2007/ai-usage-widget/releases/latest) · [Changelog](CHANGELOG.md)
 
-A tiny transparent pill on your Windows desktop that shows your **Claude** and **Codex** usage limits, plus the generation speed and token usage of your **local LLM** (Bionic / LM Studio). Hover to expand; it warns you before you run out and suggests where to go next.
+A tiny transparent pill on your Windows desktop that shows your **Claude** and **Codex** usage limits, plus the generation speed and token usage of your **local LLM** (Bionic / LM Studio). Hover to expand; it warns you before you run out and suggests where to go next. You can also switch between Codex accounts or workspaces by hand, without logging out and back in.
 
 ![Preview](docs/preview_en.png)
 
@@ -15,6 +15,7 @@ A tiny transparent pill on your Windows desktop that shows your **Claude** and *
 
 - **Claude / Codex limits**: 5-hour and weekly usage, reset countdown, tokens today and in total. A thin tick on each bar marks where you'd be at an even pace — past it means you're burning fast, with a forecast of when you'll run out.
 - **Multiple Codex accounts**: if you switch between Codex accounts on one PC, each account's limits are tracked separately (the signed-in account on top, the others listed below), and it suggests switching when another account has room.
+- **Manual Codex account switching** (off by default): save a few accounts or workspaces and switch with one click; conversations, projects and settings stay shared. The list is named after your workspaces and shows the 5-hour and weekly usage of each. Logins are encrypted on your PC, and it only switches when you click, never automatically based on usage. [How to use it](#manual-codex-account-switching)
 - **Local model**: live speed while generating (zero when idle), a 90-second speed chart, MTP acceptance, VRAM, tokens today and in total.
 - **Auto-detect + choose what to show**: on first launch it finds the tools you have; only checked items appear. With a single item the pill shows extra detail.
 - **Smart alerts**: when a limit is almost out, it suggests your local model or the other service if it has room.
@@ -45,6 +46,21 @@ Requirements: Windows 11 (Windows 10 works but transparency may look different) 
 | Local model | Run a GGUF model with [LM Studio Bionic](https://lmstudio.ai) or LM Studio. Other llama.cpp servers: add their log folder to `local_log_dirs` in `settings.json`. |
 | VRAM | NVIDIA GPU (via `nvidia-smi`). |
 
+## Manual Codex account switching
+
+Off by default, and only for the Microsoft Store version of Codex for now. Quit switchers such as Cockpit Tools first: they compete for the same refresh token, causing `refresh_token_reused`, and the widget refuses to switch while they're running.
+
+1. Turn on "Manual Codex account switching" in settings.
+2. When the Codex list says "Current login is not saved yet", click "Save".
+3. Click "Add identity" in settings. The widget encrypts the current login and moves `auth.json` away (the tokens aren't revoked), so Codex shows its sign-in page.
+4. Sign in to another account, pick a workspace, and come back to click "Save". Repeat for each identity. For another workspace of the same account, pick it on the browser's selection page; for another account, you can copy the sign-in page address into a private window.
+
+After that, click "Switch" in the list. If Codex is open you're asked first; it then closes and reopens as the new identity, which interrupts running tasks.
+
+The percentages show usage **so far**, turning yellow above 70% and red above 90% (the thresholds are in `settings.json`). Identities that aren't signed in are checked about every 10 minutes and show their last known usage once their token expires.
+
+> Don't click "Log out" in Codex: it revokes the tokens, so that identity has to sign in again. Switching only saves you from logging in again. Follow OpenAI's terms, and don't use it to get around usage limits or to share accounts; staying compliant is up to you.
+
 ## FAQ
 
 - **Claude shows "usage API HTTP 401" or "token expired"**: run `claude` once in a terminal to log in again. Turning on "Auto-refresh expired Claude token" in settings makes this rarer.
@@ -52,7 +68,7 @@ Requirements: Windows 11 (Windows 10 works but transparency may look different) 
 - **The widget disappeared**: it hides over fullscreen games and videos and comes back when you leave fullscreen. If it never comes back, it may have quit: start it again, and attach `error.log` from the data folder if you report the problem.
 - **Antivirus or SmartScreen blocks it**: the exe isn't code-signed. Check the download against the SHA256 on the release page, or run from source.
 - **I use several Codex accounts**: the widget reads `~/.codex/auth.json` to know which account is signed in, and tells the accounts' log entries apart by their limit reset times, so switching accounts no longer mixes their usage. With an account switcher such as Cockpit Tools, cc-switch or codex-switch, it finds the other saved accounts and queries their live usage too; otherwise other accounts show their usage as of their last use. If your switcher stores accounts elsewhere, add the file or folder to `codex_auth_files` in `settings.json`. Name accounts with `codex_labels`, e.g. `{"me@example.com": "Main"}`.
-- **I want to switch between Codex accounts**: turn on "Manual Codex account switching" in settings (Microsoft Store version of Codex only for now). Click "Save" for the current login, then "Add identity" in settings, sign in to another account or workspace in the Codex window that opens, and come back to save it. Identities are named after their workspace automatically, and the list shows the 5-hour and weekly usage of each. After that, "Switch" does the rest, and conversations, projects and settings stay shared. You're asked first when Codex needs to close. Don't click "Log out" in Codex, which revokes the tokens, and don't run this alongside tools such as Cockpit Tools: they compete for the same refresh token, causing `refresh_token_reused`.
+- **Switching says "A Codex CLI is still running"**: `codex` is still open in a terminal, and the widget won't close it for you. End it, then switch.
 - **Codex asks me to sign in after switching**: that identity's token is no longer valid (unused for too long, or used by another tool). Sign in to the same account and workspace, then click "Save" in the widget to update it. Encrypted backups are in `codex_vault\backups` in the data folder; copy one to `codex_vault\<the ID at the end of its name>.dpapi` to restore it.
 - **Port 8765 is already in use**: change `http_port` in `settings.json`, or set `http_enabled` to `false`.
 
@@ -68,7 +84,7 @@ Requirements: Windows 11 (Windows 10 works but transparency may look different) 
 
 ## Where data lives
 
-- exe: `%LOCALAPPDATA%\AIUsageWidget` (settings, window position, daily history, logs). Put an empty `portable.txt` next to the exe for portable mode (data in `data\` next to it).
+- exe: `%LOCALAPPDATA%\AIUsageWidget` (settings, window position, daily history, logs; encrypted logins for account switching are in `codex_vault`). Put an empty `portable.txt` next to the exe for portable mode (data in `data\` next to it).
 - Source: `data\` in the repo (git-ignored).
 - Local JSON endpoint: `http://127.0.0.1:8765/status.json` (`http_lan: true` in `settings.json` to expose it on your LAN).
 
@@ -81,6 +97,7 @@ setup_dev.bat      :: create .venv and install requirements
 start_widget.bat   :: run (no console)
 debug_widget.bat   :: run with console and devtools
 build_exe.bat      :: build with PyInstaller into dist\AIUsageWidget\
+.venv\Scripts\python -m unittest discover -s tests   :: run the tests (switching tests use fake tokens and temp folders only)
 ```
 
 To release: bump `VERSION` in `app/main.py`, add a section for it at the top of `CHANGELOG.md`, then run `publish.bat`. It commits, pushes and tags `v*`; GitHub Actions then builds the zip and uses that CHANGELOG section as the release notes (`.github/workflows/release.yml`).

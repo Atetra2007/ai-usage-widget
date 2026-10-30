@@ -25,7 +25,7 @@ from providers import local as P_local  # noqa: E402
 from providers import lmctl as P_lmctl  # noqa: E402
 from providers.common import FileCache, History  # noqa: E402
 
-VERSION = "1.0.3"
+VERSION = "1.1.0"
 TITLE = "AI Usage Widget"
 IS_WIN = sys.platform == "win32"
 DATA = paths.data_dir()

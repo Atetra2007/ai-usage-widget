@@ -7,7 +7,7 @@
 
 [English](README.en.md) | 中文 · [下载最新版](https://github.com/Atetra2007/ai-usage-widget/releases/latest) · [更新日志](CHANGELOG.md)
 
-Windows 桌面上的一条透明小胶囊，实时显示 **Claude**、**Codex** 的剩余额度，以及**本地大模型**（Bionic / LM Studio）的生成速度和 token 用量。鼠标移上去展开详情，额度快用完时提醒你换个工具。
+Windows 桌面上的一条透明小胶囊，实时显示 **Claude**、**Codex** 的剩余额度，以及**本地大模型**（Bionic / LM Studio）的生成速度和 token 用量。鼠标移上去展开详情，额度快用完时提醒你换个工具；还可以在几个 Codex 账号或空间之间手动切换，不用退出再登录。
 
 ![预览](docs/preview_zh.png)
 
@@ -15,6 +15,7 @@ Windows 桌面上的一条透明小胶囊，实时显示 **Claude**、**Codex** 
 
 - **Claude / Codex 额度**：5 小时窗口和每周额度、重置倒计时、今日和累计 token。进度条上的细竖线表示按时间均匀消耗应在的位置，越过它说明用快了，还会预测什么时候用完。
 - **Codex 多账号**：在一台电脑上切换几个 Codex 账号时，每个号的额度分开显示（当前登录的号在上面，其他号列在下面），快用完时提示切到还有余量的号。
+- **Codex 手动切号**（默认关闭）：保存几个账号或空间，点一下就切换，对话、项目和设置都共用；列表自动用空间名，并同时显示每个身份的 5 小时和周额度。登录信息加密保存在本机，只在你点按钮时切换，不会按额度自动换号。[用法](#codex-手动切号)
 - **本地模型**：生成时显示速度、空闲时归零，最近 90 秒速度曲线，MTP 接受率，显存占用，今日和累计 token。
 - **自动识别 + 手动勾选**：第一次启动自动检测你装了哪些工具，只显示勾选的项目；只勾一项时胶囊会显示更多细节。
 - **智能提醒**：快用完时，有本地模型就提示「简单任务交给本地」，同时有 Claude 和 Codex 就提示另一个还剩多少。
@@ -53,6 +54,21 @@ Windows 桌面上的一条透明小胶囊，实时显示 **Claude**、**Codex** 
 - 放在屏幕下半边时向上展开，右半边时固定右边缘。
 - 「设置」里可以勾选显示内容、换样式、开机自启、换语言。
 
+## Codex 手动切号
+
+默认关闭，目前只支持微软商店版 Codex。开始前先退出 Cockpit Tools 这类切换工具：它们会抢同一份 refresh token，导致 `refresh_token_reused`，它们开着时小组件也会拒绝切换。
+
+1. 在设置里打开「Codex 手动切号」。
+2. Codex 列表下面提示「当前登录还没保存」时，点「保存」。
+3. 在设置里点「添加身份」。小组件会加密保存当前登录并移走 `auth.json`（不会吊销令牌），Codex 就会显示登录页。
+4. 登录另一个账号，选好空间，回到小组件点「保存」。需要几个身份就重复几次。登录同一个账号的另一个空间时，要在浏览器的选择页面选那个空间；登录另一个账号时，可以把登录页地址复制到无痕窗口。
+
+之后在列表里点「切换」就行。Codex 开着时会先问你，确认后关闭并以新身份重新打开，进行中的任务会中断。
+
+列表显示的百分比是**已用**额度，超过 70% 变黄，超过 90% 变红（阈值可在 `settings.json` 改）。没登录的身份约 10 分钟查一次额度，令牌过期后显示上次的值。
+
+> 不要在 Codex 里点「退出登录」，那会吊销令牌，这个身份就得重新登录。切号只是省去重新登录，请遵守 OpenAI 的条款，不要用它规避用量限制或与他人共用账号；是否合规由你自己负责。
+
 ## 常见问题
 
 - **Claude 显示「额度接口 HTTP 401」或「令牌已过期」**：在终端运行一次 `claude` 重新登录即可；设置里打开「Claude 令牌过期时自动刷新」可以少遇到。
@@ -60,7 +76,7 @@ Windows 桌面上的一条透明小胶囊，实时显示 **Claude**、**Codex** 
 - **小组件不见了**：全屏玩游戏 / 看视频时会自动隐藏，退出全屏就回来。如果一直不出现，可能是程序退出了：重新打开它；反馈问题时请附上数据目录里的 `error.log`。
 - **杀毒软件或 SmartScreen 拦截**：exe 没有代码签名。可以用 Release 页面上的 SHA256 核对下载的文件，或者从源码运行。
 - **Codex 用了好几个账号**：小组件读 `~/.codex/auth.json` 认出当前登录的号，再用额度窗口的重置时间区分日志里各个号的记录，切号后也不会把两个号的额度混在一起。用 Cockpit Tools、cc-switch、codex-switch 这类切换工具时，会自动找它们保存的其他账号一起查询实时额度；找不到的话，其他号显示最后一次使用时的额度。工具把账号存在别的地方时，可以在 `settings.json` 的 `codex_auth_files` 里填文件或文件夹路径；`codex_labels` 可以给账号起名字，例如 `{"me@example.com": "主号"}`。
-- **想在几个 Codex 账号之间切换**：在设置里打开「Codex 手动切号」（目前只支持微软商店版 Codex）。当前登录点「保存」，再到设置里点「添加身份」，在打开的 Codex 里登录另一个号或空间，回来保存。名字会自动用空间名，列表里同时显示每个身份已用的 5 小时额度和周额度。之后点「切换」就行，对话、项目和设置都共用。需要关闭 Codex 时会先问你。不要在 Codex 里点「退出登录」，那会吊销令牌；也不要和 Cockpit Tools 这类工具同时用，它们会抢同一份 refresh token，导致 `refresh_token_reused`。
+- **切号时提示「还有 Codex 命令行在运行」**：终端里还开着 `codex`，小组件不会替你关，结束它再切换。
 - **切号后 Codex 要求重新登录**：这个身份的令牌失效了（比如太久没用，或被别的工具用过）。登录同一个号和空间，回到小组件点「保存」就会更新。加密备份在数据目录的 `codex_vault\backups`，把备份复制成 `codex_vault\<文件名最后的 ID>.dpapi` 可以恢复。
 - **端口 8765 被占用**：在 `settings.json` 里改 `http_port`，或把 `http_enabled` 设为 `false`。
 
@@ -76,7 +92,7 @@ Windows 桌面上的一条透明小胶囊，实时显示 **Claude**、**Codex** 
 
 ## 数据位置
 
-- exe 版：`%LOCALAPPDATA%\AIUsageWidget`（设置 `settings.json`、窗口位置、每日用量历史、日志）。在 exe 旁边放一个空的 `portable.txt` 就改为便携模式，数据存在 exe 旁的 `data\`。
+- exe 版：`%LOCALAPPDATA%\AIUsageWidget`（设置 `settings.json`、窗口位置、每日用量历史、日志；切号保存的加密登录信息在 `codex_vault`）。在 exe 旁边放一个空的 `portable.txt` 就改为便携模式，数据存在 exe 旁的 `data\`。
 - 源码版：仓库里的 `data\`（已在 .gitignore 里）。
 - 本机 JSON 接口：`http://127.0.0.1:8765/status.json`（`settings.json` 里 `http_lan: true` 可让局域网设备访问）。
 
@@ -89,6 +105,7 @@ setup_dev.bat      :: 在仓库里建 .venv 并安装依赖
 start_widget.bat   :: 启动（无控制台）
 debug_widget.bat   :: 带控制台和开发者工具启动
 build_exe.bat      :: 用 PyInstaller 打包到 dist\AIUsageWidget\
+.venv\Scripts\python -m unittest discover -s tests   :: 运行测试（切号测试只用假令牌和临时目录）
 ```
 
 发布新版本：改 `app/main.py` 里的 `VERSION`，在 `CHANGELOG.md` 顶部写好这个版本的更新内容，然后双击 `publish.bat`。它会提交、推送并打上 `v*` 标签，GitHub Actions 随后自动打包，用 CHANGELOG 里对应的段落作为 Release 说明（见 `.github/workflows/release.yml`）。
@@ -100,8 +117,9 @@ app/
   main.py          采集调度、窗口、透明/吸附/全屏隐藏
   settings.py      设置、自动识别、开机自启
   paths.py         资源与数据目录
-  providers/       每个数据来源一个模块（claude / codex / local / gpu）
+  providers/       每个数据来源一个模块（claude / codex / local / gpu），codex_switch.py 是手动切号
   ui/index.html    界面（含中英文案）
+tests/             切号模块的测试
 ```
 
 想加新的数据来源：在 `providers/` 里写一个带 `detect()` 和采集类的模块，再在 `settings.py` 和界面里注册即可。
